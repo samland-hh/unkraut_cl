@@ -1,0 +1,524 @@
+<!-- app/templates/control.html -->
+{% extends "base.html" %}
+
+{% block title %}Steuerung - Unkraut-2025{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Manual Control Panel -->
+    <div class="col-lg-6 mb-4">
+        <div class="card control-panel">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-gamepad"></i> Manuelle Steuerung</h4>
+            </div>
+            <div class="card-body">
+                <!-- Direction Pad -->
+                <div class="text-center mb-4">
+                    <div class="direction-pad">
+                        <button class="direction-btn up" onmousedown="moveRobot('forward')" onmouseup="stopRobot()" ontouchstart="moveRobot('forward')" ontouchend="stopRobot()">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button class="direction-btn left" onmousedown="moveRobot('left')" onmouseup="stopRobot()" ontouchstart="moveRobot('left')" ontouchend="stopRobot()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <button class="direction-btn stop" onclick="emergencyStop()">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <button class="direction-btn right" onmousedown="moveRobot('right')" onmouseup="stopRobot()" ontouchstart="moveRobot('right')" ontouchend="stopRobot()">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <button class="direction-btn down" onmousedown="moveRobot('backward')" onmouseup="stopRobot()" ontouchstart="moveRobot('backward')" ontouchend="stopRobot()">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Speed Control -->
+                <div class="speed-control mb-4">
+                    <label class="form-label text-white">
+                        <i class="fas fa-tachometer-alt"></i> Geschwindigkeit: 
+                        <span id="speed-display">50%</span>
+                    </label>
+                    <input type="range" class="speed-slider" min="10" max="100" value="50" 
+                           oninput="changeSpeed(this.value)">
+                </div>
+
+                <!-- Mode Selection -->
+                <div class="row text-center">
+                    <div class="col-4">
+                        <button class="btn btn-outline-light w-100" onclick="changeMode('manual')" id="mode-manual">
+                            <i class="fas fa-hand-paper"></i><br>Manuell
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-light w-100" onclick="changeMode('auto')" id="mode-auto">
+                            <i class="fas fa-robot"></i><br>Automatik
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-light w-100" onclick="changeMode('patrol')" id="mode-patrol">
+                            <i class="fas fa-route"></i><br>Patrouille
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera & Detection -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5><i class="fas fa-camera"></i> Live Kamera & KI-Erkennung</h5>
+                <div class="float-end">
+                    <button class="btn btn-sm btn-primary" onclick="detectWeeds()">
+                        <i class="fas fa-search"></i> Erkennen
+                    </button>
+                    <button class="btn btn-sm btn-success" onclick="captureImage()">
+                        <i class="fas fa-camera"></i> Foto
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="camera-container ratio ratio-4x3">
+                    <img id="camera-stream" src="{{ url_for('camera.video_stream') }}" 
+                         class="img-fluid" alt="Kamera Stream">
+                    <div class="camera-overlay"></div>
+                </div>
+                
+                <!-- Camera Controls -->
+                <div class="p-3">
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label">Helligkeit</label>
+                            <input type="range" class="form-range" min="0" max="100" value="50" 
+                                   oninput="adjustCamera('brightness', this.value)">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Kontrast</label>
+                            <input type="range" class="form-range" min="0" max="100" value="50" 
+                                   oninput="adjustCamera('contrast', this.value)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> Aktionen</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-lg-2 col-md-4 col-6 mb-3">
+                        <button class="btn btn-success w-100" onclick="startMission()">
+                            <i class="fas fa-play"></i><br>
+                            <small>Mission starten</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-3">
+                        <button class="btn btn-warning w-100" onclick="pauseMission()">
+                            <i class="fas fa-pause"></i><br>
+                            <small>Pausieren</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-3">
+                        <button class="btn btn-info w-100" onclick="returnHome()">
+                            <i class="fas fa-home"></i><br>
+                            <small>Zur Basis</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-3">
+                        <button class="btn btn-primary w-100" onclick="mapArea()">
+                            <i class="fas fa-map"></i><br>
+                            <small>Bereich kartieren</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-3">
+                        <button class="btn btn-secondary w-100" onclick="cleanBrush()">
+                            <i class="fas fa-broom"></i><br>
+                            <small>Bürste reinigen</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-3">
+                        <button class="btn btn-danger w-100" onclick="emergencyStop()">
+                            <i class="fas fa-exclamation-triangle"></i><br>
+                            <small>NOT-STOPP</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status & Telemetry -->
+<div class="row">
+    <!-- Robot Status -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h6><i class="fas fa-robot"></i> Roboter Status</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Modus:</strong></div>
+                    <div class="col-6"><span class="badge bg-primary" id="current-mode">Manuell</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Status:</strong></div>
+                    <div class="col-6"><span class="badge bg-success" id="robot-status">Bereit</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Geschwindigkeit:</strong></div>
+                    <div class="col-6"><span id="current-speed">0</span> km/h</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Batterie:</strong></div>
+                    <div class="col-6">
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success" id="battery-bar" style="width: 85%">85%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>GPS Signal:</strong></div>
+                    <div class="col-6">
+                        <span class="status-indicator status-online"></span>
+                        <span id="gps-status">Stark</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environmental Sensors -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h6><i class="fas fa-leaf"></i> Umweltsensoren</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Temperatur:</strong></div>
+                    <div class="col-6"><span id="env-temperature">22°C</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Luftfeuchtigkeit:</strong></div>
+                    <div class="col-6"><span id="env-humidity">65%</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Bodenfeuchtigkeit:</strong></div>
+                    <div class="col-6"><span id="soil-moisture">45%</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>UV-Index:</strong></div>
+                    <div class="col-6"><span id="uv-index">6</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Windgeschwindigkeit:</strong></div>
+                    <div class="col-6"><span id="wind-speed">2.3 km/h</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Statistics -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h6><i class="fas fa-chart-bar"></i> Arbeitsstatistik</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Bearbeitete Fläche:</strong></div>
+                    <div class="col-6"><span id="area-covered">125 m²</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Erkanntes Unkraut:</strong></div>
+                    <div class="col-6"><span id="weeds-detected">47</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Entferntes Unkraut:</strong></div>
+                    <div class="col-6"><span id="weeds-removed">43</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Betriebszeit:</strong></div>
+                    <div class="col-6"><span id="operating-time">2h 35min</span></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>Effizienz:</strong></div>
+                    <div class="col-6">
+                        <div class="progress" style="height: 16px;">
+                            <div class="progress-bar bg-info" style="width: 91%">91%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Keyboard Shortcuts Help -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-keyboard"></i> Tastaturkürzel</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Bewegung:</strong><br>
+                        <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> oder Pfeiltasten
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Stopp:</strong><br>
+                        <kbd>Leertaste</kbd>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Erkennung:</strong><br>
+                        <kbd>E</kbd>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Foto:</strong><br>
+                        <kbd>C</kbd>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Control Panel specific JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize control panel
+    updateControlPanel();
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        switch(e.code) {
+            case 'KeyE':
+                e.preventDefault();
+                detectWeeds();
+                break;
+            case 'KeyC':
+                e.preventDefault();
+                captureImage();
+                break;
+        }
+    });
+});
+
+function moveRobot(direction) {
+    if (window.unkrautApp) {
+        window.unkrautApp.moveRobot(direction);
+    }
+    
+    // Visual feedback
+    highlightDirectionButton(direction);
+}
+
+function stopRobot() {
+    if (window.unkrautApp) {
+        window.unkrautApp.stopRobot();
+    }
+    
+    // Remove visual feedback
+    clearDirectionHighlight();
+}
+
+function highlightDirectionButton(direction) {
+    const buttonMap = {
+        'forward': '.up',
+        'backward': '.down',
+        'left': '.left',
+        'right': '.right'
+    };
+    
+    const selector = buttonMap[direction];
+    if (selector) {
+        const button = document.querySelector(selector);
+        if (button) {
+            button.style.background = 'rgba(255,255,255,0.5)';
+        }
+    }
+}
+
+function clearDirectionHighlight() {
+    const buttons = document.querySelectorAll('.direction-btn:not(.stop)');
+    buttons.forEach(button => {
+        button.style.background = 'rgba(255,255,255,0.2)';
+    });
+}
+
+function changeMode(mode) {
+    if (window.unkrautApp) {
+        window.unkrautApp.setMode(mode);
+    }
+    
+    // Update button states
+    document.querySelectorAll('[id^="mode-"]').forEach(btn => {
+        btn.classList.remove('btn-light');
+        btn.classList.add('btn-outline-light');
+    });
+    
+    const activeBtn = document.getElementById(`mode-${mode}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('btn-outline-light');
+        activeBtn.classList.add('btn-light');
+    }
+}
+
+function changeSpeed(speed) {
+    if (window.unkrautApp) {
+        window.unkrautApp.setSpeed(speed);
+    }
+}
+
+function captureImage() {
+    fetch('/api/camera/capture', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'captured') {
+                window.unkrautApp.showToast(`Bild gespeichert: ${data.filename}`, 'success');
+            } else {
+                window.unkrautApp.showToast(data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Capture failed:', error);
+            window.unkrautApp.showToast('Foto-Aufnahme fehlgeschlagen', 'error');
+        });
+}
+
+function adjustCamera(setting, value) {
+    fetch('/api/camera/adjust', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ setting: setting, value: value })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(`Camera ${setting} adjusted to ${value}`);
+    })
+    .catch(error => {
+        console.error('Camera adjustment failed:', error);
+    });
+}
+
+// Mission Control Functions
+function startMission() {
+    const confirmation = confirm('Mission starten? Der Roboter wird automatisch arbeiten.');
+    if (confirmation) {
+        changeMode('auto');
+        window.unkrautApp.showToast('Mission gestartet', 'success');
+    }
+}
+
+function pauseMission() {
+    changeMode('manual');
+    window.unkrautApp.showToast('Mission pausiert', 'warning');
+}
+
+function returnHome() {
+    fetch('/api/control/return-home', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            window.unkrautApp.showToast('Roboter kehrt zur Basis zurück', 'info');
+        })
+        .catch(error => {
+            console.error('Return home failed:', error);
+        });
+}
+
+function mapArea() {
+    fetch('/api/control/map-area', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            window.unkrautApp.showToast('Bereich-Kartierung gestartet', 'info');
+        })
+        .catch(error => {
+            console.error('Mapping failed:', error);
+        });
+}
+
+function cleanBrush() {
+    fetch('/api/control/clean-brush', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            window.unkrautApp.showToast('Bürsten-Reinigung gestartet', 'info');
+        })
+        .catch(error => {
+            console.error('Brush cleaning failed:', error);
+        });
+}
+
+function updateControlPanel() {
+    // Update status displays
+    setInterval(() => {
+        fetch('/api/control/status')
+            .then(response => response.json())
+            .then(data => {
+                updateStatusDisplays(data);
+            })
+            .catch(error => {
+                console.error('Status update failed:', error);
+            });
+    }, 2000);
+}
+
+function updateStatusDisplays(data) {
+    // Update various status displays
+    if (data.battery) {
+        const batteryBar = document.getElementById('battery-bar');
+        const batteryPercent = data.battery.percentage;
+        if (batteryBar) {
+            batteryBar.style.width = batteryPercent + '%';
+            batteryBar.textContent = batteryPercent + '%';
+            
+            // Change color based on battery level
+            batteryBar.className = 'progress-bar';
+            if (batteryPercent > 50) {
+                batteryBar.classList.add('bg-success');
+            } else if (batteryPercent > 20) {
+                batteryBar.classList.add('bg-warning');
+            } else {
+                batteryBar.classList.add('bg-danger');
+            }
+        }
+    }
+    
+    // Update environmental sensors
+    if (data.sensors && data.sensors.environment) {
+        const env = data.sensors.environment;
+        document.getElementById('env-temperature').textContent = env.temperature + '°C';
+        document.getElementById('env-humidity').textContent = env.humidity + '%';
+        document.getElementById('soil-moisture').textContent = env.soil_moisture + '%';
+    }
+    
+    // Update work statistics
+    if (data.statistics) {
+        const stats = data.statistics;
+        document.getElementById('area-covered').textContent = stats.area_covered + ' m²';
+        document.getElementById('weeds-detected').textContent = stats.weeds_detected;
+        document.getElementById('weeds-removed').textContent = stats.weeds_removed;
+        document.getElementById('operating-time').textContent = formatDuration(stats.operating_time);
+    }
+}
+
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}min`;
+}
+</script>
+{% endblock %>
