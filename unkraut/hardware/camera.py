@@ -355,69 +355,70 @@ class CameraManager:
         ret, buffer = cv2.imencode('.jpg', img)
         return buffer.tobytes() if ret else b''
     
- def capture_image(self, filename=None, high_resolution=False):
-    """
-    Foto aufnehmen - mit Option für hochaufgelöste Fotos
-    high_resolution=True: Stoppt Stream für libcamera-still (1920x1080)
-    high_resolution=False: Nutzt Stream-Frame (640x480)
-    """
-    if filename is None:
-        filename = f"capture_{int(time.time())}.jpg"
-    
-    filepath = f"data/images/{filename}"
-    os.makedirs("data/images", exist_ok=True)
-    
-    # Hochauflösendes Foto (stoppt Stream temporär)
-    if high_resolution and self.camera_type == 'libcamera':
-        print("📸 Stoppe Stream für hochaufgelöstes Foto...")
+    def capture_image(self, filename=None, high_resolution=False):
+        """
+        Foto aufnehmen - mit Option für hochaufgelöste Fotos
+        high_resolution=True: Stoppt Stream für libcamera-still (1920x1080)
+        high_resolution=False: Nutzt Stream-Frame (640x480)
+        """
+        if filename is None:
+            filename = f"capture_{int(time.time())}.jpg"
         
-        # Stream temporär stoppen
-        was_streaming = self.is_streaming
-        if was_streaming:
-            self.stop_stream()
-            time.sleep(1)  # Warten bis libcamera-vid wirklich beendet ist
+        filepath = f"data/images/{filename}"
+        os.makedirs("data/images", exist_ok=True)
         
-        try:
-            result = subprocess.run([
-                'libcamera-still',
-                '-o', filepath,
-                '--timeout', '2000',
-                '--width', '1920',
-                '--height', '1080',
-                '--nopreview'
-            ], capture_output=True, timeout=15)
+        # Hochauflösendes Foto (stoppt Stream temporär)
+        if high_resolution and self.camera_type == 'libcamera':
+            print("📸 Stoppe Stream für hochaufgelöstes Foto...")
             
-            if result.returncode == 0 and os.path.exists(filepath):
-                print(f"📸 Hochauflösendes Foto (1920x1080): {filepath}")
+            # Stream temporär stoppen
+            was_streaming = self.is_streaming
+            if was_streaming:
+                self.stop_stream()
+                time.sleep(1)  # Warten bis libcamera-vid wirklich beendet ist
+            
+            try:
+                result = subprocess.run([
+                    'libcamera-still',
+                    '-o', filepath,
+                    '--timeout', '2000',
+                    '--width', '1920',
+                    '--height', '1080',
+                    '--nopreview'
+                ], capture_output=True, timeout=15)
                 
-                # Stream wieder starten falls er lief
-                if was_streaming:
-                    print("🔄 Starte Stream wieder...")
-                    self.start_stream()
-                
+                if result.returncode == 0 and os.path.exists(filepath):
+                    print(f"📸 Hochauflösendes Foto (1920x1080): {filepath}")
+                    
+                    # Stream wieder starten falls er lief
+                    if was_streaming:
+                        print("🔄 Starte Stream wieder...")
+                        self.start_stream()
+                    
+                    return filename
+                else:
+                    print(f"❌ libcamera-still Fehler: {result.stderr.decode()}")
+            
+            except Exception as e:
+                print(f"❌ Hochauflösendes Foto Fehler: {e}")
+            
+            # Stream wieder starten bei Fehler
+            if was_streaming:
+                self.start_stream()
+        
+        # Standard: Stream-Frame verwenden (kein Konflikt)
+        frame_data = self.get_frame()
+        if frame_data and len(frame_data) > 1000:
+            try:
+                with open(filepath, 'wb') as f:
+                    f.write(frame_data)
+                print(f"📸 Stream-Frame gespeichert (640x480): {filepath}")
                 return filename
-            else:
-                print(f"❌ libcamera-still Fehler: {result.stderr.decode()}")
+            except Exception as e:
+                print(f"❌ Stream-Foto Fehler: {e}")
         
-        except Exception as e:
-            print(f"❌ Hochauflösendes Foto Fehler: {e}")
+        return None
         
-        # Stream wieder starten bei Fehler
-        if was_streaming:
-            self.start_stream()
-    
-    # Standard: Stream-Frame verwenden (kein Konflikt)
-    frame_data = self.get_frame()
-    if frame_data and len(frame_data) > 1000:
-        try:
-            with open(filepath, 'wb') as f:
-                f.write(frame_data)
-            print(f"📸 Stream-Frame gespeichert (640x480): {filepath}")
-            return filename
-        except Exception as e:
-            print(f"❌ Stream-Foto Fehler: {e}")
-    
-    return None    
     def adjust_setting(self, setting, value):
         """Einstellungen anpassen"""
         if setting in self.settings:

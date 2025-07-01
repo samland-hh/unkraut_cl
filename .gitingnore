@@ -1,2 +1,3 @@
 copyun.sh
-*tar
+*.tar
+unkraut/data/
