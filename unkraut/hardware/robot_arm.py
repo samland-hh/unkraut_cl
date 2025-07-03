@@ -1,300 +1,325 @@
 # hardware/robot_arm.py
 """
-Roboterarm-Steuerung für Unkraut-2025
-Verwendet ServoController für PCA9685
+6-DOF Roboterarm Controller für Unkraut-2025
+Unterstützt PCA9685 PWM-Controller mit Mock-Fallback
 """
-from .servo_controller import ServoController
 import time
+import threading
 import math
 
-class RobotArm:
+class RobotArmController:
     def __init__(self):
-        """Roboterarm initialisieren"""
-        print("🦾 Initialisiere RobotArm...")
+        self.hardware_available = False
+        self.pca = None
+        self.i2c_address = 0x40
+        self.servo_count = 6
+        self.is_moving = False
+        self.emergency_stopped = False
         
-        self.servo_controller = ServoController()
-        
-        # Arm-Konfiguration: 6 Servos für kompletten Roboterarm
-        self.arm_config = {
-            'base': {'channel': 0, 'min': 0, 'max': 180, 'default': 90},
-            'shoulder': {'channel': 1, 'min': 0, 'max': 180, 'default': 90},
-            'elbow': {'channel': 2, 'min': 0, 'max': 180, 'default': 90},
-            'wrist': {'channel': 3, 'min': 0, 'max': 180, 'default': 90},
-            'gripper': {'channel': 4, 'min': 0, 'max': 180, 'default': 90},
-            'tool': {'channel': 5, 'min': 0, 'max': 180, 'default': 0}
+        # Servo-Konfiguration
+        self.servos = {
+            'base': {'channel': 0, 'min_angle': 0, 'max_angle': 180, 'current': 90},
+            'shoulder': {'channel': 1, 'min_angle': 0, 'max_angle': 180, 'current': 90},
+            'elbow': {'channel': 2, 'min_angle': 0, 'max_angle': 180, 'current': 90},
+            'wrist': {'channel': 3, 'min_angle': 0, 'max_angle': 180, 'current': 90},
+            'gripper': {'channel': 5, 'min_angle': 0, 'max_angle': 180, 'current': 90},
+            'tool': {'channel': 7, 'min_angle': 0, 'max_angle': 180, 'current': 0}
         }
         
-        # Servos konfigurieren
-        self._setup_servos()
-        
-        # Vordefinierte Positionen für verschiedene Aufgaben
-        self.preset_positions = {
+        # Preset-Positionen
+        self.presets = {
             'home': {
                 'base': 90, 'shoulder': 90, 'elbow': 90, 
                 'wrist': 90, 'gripper': 90, 'tool': 0
             },
-            'park': {
-                'base': 90, 'shoulder': 45, 'elbow': 135,
+            'weed_detect': {
+                'base': 90, 'shoulder': 45, 'elbow': 45, 
                 'wrist': 90, 'gripper': 180, 'tool': 0
             },
-            'weed_detect': {
-                'base': 90, 'shoulder': 120, 'elbow': 60,
-                'wrist': 45, 'gripper': 90, 'tool': 0
-            },
             'weed_remove': {
-                'base': 90, 'shoulder': 135, 'elbow': 45,
-                'wrist': 30, 'gripper': 45, 'tool': 180
+                'base': 90, 'shoulder': 30, 'elbow': 30, 
+                'wrist': 45, 'gripper': 0, 'tool': 180
             },
-            'spray_position': {
-                'base': 90, 'shoulder': 110, 'elbow': 70,
-                'wrist': 0, 'gripper': 90, 'tool': 90
-            },
-            'collect_sample': {
-                'base': 90, 'shoulder': 140, 'elbow': 40,
-                'wrist': 0, 'gripper': 0, 'tool': 0
+            'park': {
+                'base': 0, 'shoulder': 180, 'elbow': 180, 
+                'wrist': 180, 'gripper': 90, 'tool': 0
             }
         }
         
-        print("✅ RobotArm initialisiert")
+        self.init_hardware()
     
-    def _setup_servos(self):
-        """Alle Arm-Servos konfigurieren"""
-        print("🔧 Konfiguriere Servos...")
-        
-        for servo_id, config in self.arm_config.items():
-            success = self.servo_controller.add_servo(
-                servo_id=servo_id,
-                channel=config['channel'],
-                min_angle=config['min'],
-                max_angle=config['max'],
-                default_angle=config['default']
-            )
+    def init_hardware(self):
+        """Hardware initialisieren"""
+        try:
+            # Versuche PCA9685 zu importieren und initialisieren
+            from adafruit_pca9685 import PCA9685
+            import board
+            import busio
             
-            if success:
-                print(f"  ✅ {servo_id}: Kanal {config['channel']}")
-            else:
-                print(f"  ❌ {servo_id}: Fehler")
+            # I2C Bus initialisieren
+            i2c = busio.I2C(board.SCL, board.SDA)
+            self.pca = PCA9685(i2c, address=self.i2c_address)
+            self.pca.frequency = 50  # 50Hz für Servos
+            
+            self.hardware_available = True
+            print("✅ Roboterarm Hardware initialisiert (PCA9685)")
+            
+            # Home Position fahren
+            self.move_to_preset('home', duration=3.0)
+            
+        except ImportError:
+            print("⚠️ Adafruit PCA9685 Library nicht installiert")
+            print("💡 Install: pip install adafruit-circuitpython-pca9685")
+            self._init_mock_mode()
+        except Exception as e:
+            print(f"⚠️ PCA9685 Hardware nicht verfügbar: {e}")
+            self._init_mock_mode()
     
-    def move_to_preset(self, preset_name, duration=2.0):
-        """
-        Zu vordefinierter Position fahren
-        preset_name: Name der Position ('home', 'weed_remove', etc.)
-        duration: Bewegungsdauer in Sekunden
-        """
-        if preset_name not in self.preset_positions:
-            print(f"❌ Preset '{preset_name}' nicht gefunden")
-            available = list(self.preset_positions.keys())
-            print(f"Verfügbare Presets: {available}")
+    def _init_mock_mode(self):
+        """Mock-Modus initialisieren"""
+        self.hardware_available = False
+        self.pca = None
+        print("🔧 Roboterarm Mock-Modus aktiviert")
+    
+    def move_joint(self, joint, angle, duration=0.5):
+        """Einzelnes Gelenk bewegen"""
+        if self.emergency_stopped:
+            print("🚨 Roboterarm im Notaus-Modus!")
             return False
         
-        position = self.preset_positions[preset_name]
-        print(f"🦾 Fahre zu Position '{preset_name}' ({duration}s)...")
+        if joint not in self.servos:
+            print(f"❌ Unbekanntes Gelenk: {joint}")
+            return False
         
-        self.servo_controller.set_multiple_servos(position, duration)
+        servo = self.servos[joint]
+        
+        # Winkel begrenzen
+        angle = max(servo['min_angle'], min(servo['max_angle'], angle))
+        
+        if self.hardware_available and self.pca:
+            try:
+                # PWM-Wert berechnen (für Standard-Servos)
+                pulse_length = int(500 + (angle / 180.0) * 2000)  # 500-2500µs
+                duty_cycle = int(pulse_length * 65535 / 20000)    # 20ms Periode
+                
+                self.pca.channels[servo['channel']].duty_cycle = duty_cycle
+                print(f"🦾 {joint}: {angle}° (Hardware)")
+                
+            except Exception as e:
+                print(f"❌ Servo-Fehler {joint}: {e}")
+                return False
+        else:
+            print(f"🔧 {joint}: {angle}° (Mock)")
+        
+        # Position speichern
+        servo['current'] = angle
+        
+        # Bewegungszeit simulieren
+        if duration > 0:
+            time.sleep(min(duration, 0.1))  # Max 100ms für Responsivität
+        
         return True
     
-    def move_joint(self, joint_name, angle):
-        """
-        Einzelnes Gelenk bewegen
-        joint_name: 'base', 'shoulder', 'elbow', 'wrist', 'gripper', 'tool'
-        angle: Zielwinkel in Grad
-        """
-        if joint_name not in self.arm_config:
-            print(f"❌ Gelenk '{joint_name}' nicht gefunden")
-            available = list(self.arm_config.keys())
-            print(f"Verfügbare Gelenke: {available}")
+    def move_to_preset(self, preset_name, duration=2.0):
+        """Zu Preset-Position fahren"""
+        if preset_name not in self.presets:
+            print(f"❌ Preset nicht gefunden: {preset_name}")
             return False
         
-        return self.servo_controller.set_servo_angle(joint_name, angle)
-    
-    def get_current_position(self):
-        """Aktuelle Arm-Position"""
-        return self.servo_controller.get_all_positions()
-    
-    def set_custom_position(self, positions, duration=1.5):
-        """
-        Zu benutzerdefinierten Positionen fahren
-        positions: Dict mit {joint_name: angle}
-        """
-        # Nur gültige Gelenke verwenden
-        valid_positions = {}
-        for joint, angle in positions.items():
-            if joint in self.arm_config:
-                valid_positions[joint] = angle
-            else:
-                print(f"⚠️  Ungültiges Gelenk ignoriert: {joint}")
+        preset = self.presets[preset_name]
+        print(f"🎯 Fahre zu Preset: {preset_name}")
         
-        if valid_positions:
-            print(f"🦾 Fahre zu benutzerdefinierten Positionen...")
-            self.servo_controller.set_multiple_servos(valid_positions, duration)
+        self.is_moving = True
+        
+        try:
+            # Smooth Movement Thread
+            def smooth_move():
+                steps = max(10, int(duration * 10))  # 10 Steps pro Sekunde
+                
+                # Start-Positionen
+                start_positions = {joint: self.servos[joint]['current'] for joint in preset}
+                
+                for step in range(steps + 1):
+                    if self.emergency_stopped:
+                        break
+                    
+                    progress = step / steps
+                    
+                    # Interpolation für alle Gelenke
+                    for joint, target_angle in preset.items():
+                        if joint in start_positions:
+                            start_angle = start_positions[joint]
+                            current_angle = start_angle + (target_angle - start_angle) * progress
+                            self.move_joint(joint, current_angle, duration=0)
+                    
+                    time.sleep(duration / steps)
+                
+                self.is_moving = False
+                print(f"✅ Preset {preset_name} erreicht")
+            
+            thread = threading.Thread(target=smooth_move, daemon=True)
+            thread.start()
+            
             return True
-        else:
-            print("❌ Keine gültigen Positionen angegeben")
+            
+        except Exception as e:
+            print(f"❌ Preset-Bewegung fehlgeschlagen: {e}")
+            self.is_moving = False
             return False
     
     def weed_removal_sequence(self, target_x=0, target_y=0):
-        """
-        Automatische Unkraut-Entfernung Sequenz
-        target_x, target_y: Relative Position des Unkrauts
-        """
-        print("🌿 Starte Unkraut-Entfernung Sequenz...")
-        print(f"   Ziel-Position: X={target_x}, Y={target_y}")
+        """Automatische Unkraut-Entfernung Sequenz"""
+        if self.emergency_stopped:
+            return False
         
-        sequence = [
-            ('weed_detect', 1.5, 'Position für Erkennung'),
-            ('weed_remove', 2.0, 'Zu Unkraut fahren'),
-            ('tool_activate', 2.0, 'Werkzeug aktivieren'),
-            ('collect_sample', 1.5, 'Sample einsammeln'),
-            ('home', 2.0, 'Zurück zur Home-Position')
-        ]
+        print(f"🌿 Starte Unkraut-Entfernung bei ({target_x}, {target_y})")
         
-        for step, (action, duration, description) in enumerate(sequence, 1):
-            print(f"  {step}/5: {description}")
+        try:
+            # 1. Erkennungsposition
+            self.move_to_preset('weed_detect', duration=2.0)
+            time.sleep(2.0)
             
-            if action == 'tool_activate':
-                self.activate_tool(duration)
-            else:
-                self.move_to_preset(action, duration)
+            # 2. Zielposition anfahren (vereinfacht)
+            target_base = 90 + (target_x * 0.5)  # Grobe Umrechnung
+            target_shoulder = 60 - (target_y * 0.3)
             
-            time.sleep(0.5)  # Kurze Pause zwischen Bewegungen
-        
-        print("✅ Unkraut-Entfernung Sequenz abgeschlossen")
+            self.move_joint('base', target_base, duration=1.0)
+            time.sleep(0.5)
+            self.move_joint('shoulder', target_shoulder, duration=1.0)
+            time.sleep(0.5)
+            
+            # 3. Werkzeug positionieren
+            self.move_to_preset('weed_remove', duration=1.5)
+            time.sleep(1.0)
+            
+            # 4. Werkzeug aktivieren
+            self.activate_tool(duration=3.0)
+            
+            # 5. Zurück zur Home-Position
+            self.move_to_preset('home', duration=2.0)
+            
+            print("✅ Unkraut-Entfernung Sequenz abgeschlossen")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Unkraut-Entfernung fehlgeschlagen: {e}")
+            self.move_to_preset('home', duration=1.0)
+            return False
     
-    def activate_tool(self, duration=2.0):
-        """
-        Werkzeug aktivieren (Bürste rotieren oder Spray)
-        """
-        print(f"🔧 Aktiviere Werkzeug für {duration}s...")
+    def activate_tool(self, duration=3.0):
+        """Werkzeug aktivieren (Rotation/Vibration)"""
+        print(f"🔧 Aktiviere Werkzeug für {duration}s")
         
-        start_angle = self.servo_controller.get_servo_angle('tool')
+        def tool_sequence():
+            # Werkzeug-Servo rotieren lassen
+            for cycle in range(int(duration * 2)):  # 2 Zyklen pro Sekunde
+                if self.emergency_stopped:
+                    break
+                
+                self.move_joint('tool', 180, duration=0.25)
+                time.sleep(0.25)
+                self.move_joint('tool', 0, duration=0.25)
+                time.sleep(0.25)
+            
+            # Werkzeug stoppen
+            self.move_joint('tool', 0, duration=0.5)
+            print("🔧 Werkzeug gestoppt")
         
-        # Tool-Servo oszillieren lassen (Bürste simulieren)
-        steps = int(duration * 10)  # 10 Steps pro Sekunde
-        for i in range(steps):
-            # Oszillations-Bewegung
-            angle = start_angle + 30 * math.sin(i * 0.8)
-            self.servo_controller.set_servo_angle('tool', angle)
-            time.sleep(0.1)
+        thread = threading.Thread(target=tool_sequence, daemon=True)
+        thread.start()
         
-        # Zurück zur Ruheposition
-        self.servo_controller.set_servo_angle('tool', start_angle)
-        print("🔧 Werkzeug deaktiviert")
+        return True
+    
+    def calibrate_servos(self):
+        """Servo-Kalibrierung durchführen"""
+        print("⚙️ Starte Servo-Kalibrierung...")
+        
+        def calibration_sequence():
+            # Jedes Gelenk durch vollen Bewegungsbereich fahren
+            for joint, servo in self.servos.items():
+                if self.emergency_stopped:
+                    break
+                
+                print(f"⚙️ Kalibriere {joint}...")
+                
+                # Zu Min-Position
+                self.move_joint(joint, servo['min_angle'], duration=1.0)
+                time.sleep(0.5)
+                
+                # Zu Max-Position
+                self.move_joint(joint, servo['max_angle'], duration=2.0)
+                time.sleep(0.5)
+                
+                # Zu Center-Position
+                center = (servo['min_angle'] + servo['max_angle']) / 2
+                self.move_joint(joint, center, duration=1.0)
+                time.sleep(0.5)
+            
+            # Finale Home-Position
+            self.move_to_preset('home', duration=3.0)
+            print("✅ Servo-Kalibrierung abgeschlossen")
+        
+        thread = threading.Thread(target=calibration_sequence, daemon=True)
+        thread.start()
+        
+        return True
     
     def emergency_stop(self):
-        """Not-Stopp für Roboterarm"""
-        print("🚨 ROBOTERARM EMERGENCY STOP")
-        self.servo_controller.emergency_stop()
+        """Notaus - Alle Bewegungen stoppen"""
+        self.emergency_stopped = True
+        self.is_moving = False
+        
+        if self.hardware_available and self.pca:
+            try:
+                # Alle Servos deaktivieren
+                for servo in self.servos.values():
+                    self.pca.channels[servo['channel']].duty_cycle = 0
+                print("🚨 Roboterarm Hardware-Notaus aktiviert")
+            except:
+                pass
+        
+        print("🚨 ROBOTERARM NOT-STOPP AKTIVIERT!")
+        
+        # Nach 3 Sekunden Reset erlauben
+        def reset_emergency():
+            time.sleep(3.0)
+            self.emergency_stopped = False
+            print("✅ Notaus zurückgesetzt - Roboterarm bereit")
+        
+        thread = threading.Thread(target=reset_emergency, daemon=True)
+        thread.start()
     
-    def home_position(self):
-        """Zur Home-Position fahren"""
-        print("🏠 Fahre zur Home-Position...")
-        return self.move_to_preset('home', 2.0)
-    
-    def park_position(self):
-        """Zur Park-Position fahren (Strom sparen)"""
-        print("🚗 Fahre zur Park-Position...")
-        result = self.move_to_preset('park', 2.0)
-        time.sleep(2.5)
-        print("🔌 Deaktiviere alle Servos...")
-        self.servo_controller.disable_all_servos()
-        return result
+    def get_current_position(self):
+        """Aktuelle Position aller Gelenke"""
+        return {joint: servo['current'] for joint, servo in self.servos.items()}
     
     def get_arm_info(self):
-        """Roboterarm-Informationen"""
-        controller_info = self.servo_controller.get_controller_info()
-        
+        """Vollständige Arm-Informationen"""
         return {
-            'controller': controller_info,
-            'joints': list(self.arm_config.keys()),
-            'presets': list(self.preset_positions.keys()),
+            'controller': {
+                'hardware_available': self.hardware_available,
+                'i2c_address': hex(self.i2c_address),
+                'servo_count': self.servo_count,
+                'is_moving': self.is_moving,
+                'emergency_stopped': self.emergency_stopped
+            },
+            'joints': list(self.servos.keys()),
+            'presets': list(self.presets.keys()),
             'current_position': self.get_current_position(),
-            'joint_limits': {
-                joint: (config['min'], config['max']) 
-                for joint, config in self.arm_config.items()
+            'servo_ranges': {
+                joint: {'min': servo['min_angle'], 'max': servo['max_angle']} 
+                for joint, servo in self.servos.items()
             }
         }
     
-    def calibrate_servos(self):
-        """
-        Servo-Kalibrierung durchführen
-        Fährt alle Servos durch ihren Bewegungsbereich
-        """
-        print("🔧 Starte Servo-Kalibrierung...")
-        
-        for joint_name in self.arm_config:
-            config = self.arm_config[joint_name]
-            print(f"  🔧 Kalibriere {joint_name}...")
-            
-            # Minimum Position
-            self.move_joint(joint_name, config['min'])
-            time.sleep(1)
-            
-            # Maximum Position  
-            self.move_joint(joint_name, config['max'])
-            time.sleep(1)
-            
-            # Zurück zu Default
-            self.move_joint(joint_name, config['default'])
-            time.sleep(0.5)
-        
-        print("✅ Servo-Kalibrierung abgeschlossen")
-        return self.home_position()
+    def get_status(self):
+        """Kurzer Status"""
+        return {
+            'available': self.hardware_available,
+            'moving': self.is_moving,
+            'emergency': self.emergency_stopped,
+            'position': self.get_current_position()
+        }
 
 # Globale Instanz
-robot_arm = RobotArm()
-
-# Test-Funktionen
-def test_robot_arm():
-    """Ausführlicher Roboterarm-Test"""
-    print("🧪 Teste Roboterarm...")
-    print("=" * 50)
-    
-    # Info anzeigen
-    info = robot_arm.get_arm_info()
-    print(f"Controller: {info['controller']['hardware_available']}")
-    print(f"Gelenke: {info['joints']}")
-    print(f"Presets: {info['presets']}")
-    print(f"Servo-Anzahl: {info['controller']['servo_count']}")
-    
-    # Kurze Kalibrierung (nur ein Servo)
-    print("\n🔧 Kurze Kalibrierung...")
-    robot_arm.move_joint('base', 45)
-    time.sleep(1)
-    robot_arm.move_joint('base', 135)
-    time.sleep(1)
-    robot_arm.move_joint('base', 90)
-    time.sleep(1)
-    
-    # Preset-Test
-    print("\n🎯 Teste Preset-Positionen...")
-    presets_to_test = ['home', 'weed_detect', 'weed_remove']
-    
-    for preset in presets_to_test:
-        print(f"  🦾 Teste: {preset}")
-        robot_arm.move_to_preset(preset, 1.0)
-        time.sleep(1.5)
-    
-    # Zurück zu Home
-    robot_arm.home_position()
-    time.sleep(2)
-    
-    # Tool-Test
-    print("\n🔧 Teste Werkzeug...")
-    robot_arm.activate_tool(2.0)
-    
-    print("\n✅ Roboterarm-Test abgeschlossen!")
-    print("💡 Für Web-Interface: python run.py")
-
-def quick_test():
-    """Schneller Test ohne Bewegung"""
-    print("⚡ Schneller Roboterarm-Test...")
-    
-    info = robot_arm.get_arm_info()
-    print(f"✅ Hardware: {info['controller']['hardware_available']}")
-    print(f"✅ Servos: {info['controller']['servo_count']}")
-    print(f"✅ I2C: {info['controller']['i2c_address']}")
-    
-    return True
-
-if __name__ == '__main__':
-    test_robot_arm()
+robot_arm = RobotArmController()

@@ -1,0 +1,45 @@
+copyun.sh
+*.tar
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Logs
+*.log
+logs/
+
+# Config files with secrets
+config/secrets.json
+.env
+
+# Data files
+unkraut/data/
+#
+data/images/
+data/videos/
+data/sessions/
+backups/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Hardware specific
+*.bin
+*.img
+

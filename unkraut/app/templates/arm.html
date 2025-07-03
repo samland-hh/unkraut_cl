@@ -1,0 +1,133 @@
+<!-- app/templates/arm.html -->
+{% extends "base.html" %}
+
+{% block title %}Roboterarm - Unkraut-2025{% endblock %}
+{% block page_title %}Roboterarm Steuerung{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h3>🎯 Preset-Positionen</h3>
+    <div class="grid">
+        <button class="btn btn-primary" onclick="moveToPreset('home')">🏠 Home Position</button>
+        <button class="btn btn-success" onclick="moveToPreset('weed_detect')">🔍 Unkraut Erkennen</button>
+        <button class="btn btn-warning" onclick="moveToPreset('weed_remove')">🌿 Unkraut Entfernen</button>
+        <button class="btn btn-danger" onclick="emergencyStop()">🚨 Not-Stopp</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>🎮 Manuelle Servo-Steuerung</h3>
+    <div class="grid">
+        <div class="servo-control">
+            <label class="servo-label">Base (Drehung): <span id="base-angle">90</span>°</label>
+            <div class="servo-slider">
+                <input type="range" min="0" max="180" value="90" class="slider" id="servo-base" oninput="moveServo('base', this.value)">
+                <div class="servo-value" id="value-base">90°</div>
+            </div>
+        </div>
+        
+        <div class="servo-control">
+            <label class="servo-label">Shoulder (Heben): <span id="shoulder-angle">90</span>°</label>
+            <div class="servo-slider">
+                <input type="range" min="0" max="180" value="90" class="slider" id="servo-shoulder" oninput="moveServo('shoulder', this.value)">
+                <div class="servo-value" id="value-shoulder">90°</div>
+            </div>
+        </div>
+        
+        <div class="servo-control">
+            <label class="servo-label">Elbow (Ellbogen): <span id="elbow-angle">90</span>°</label>
+            <div class="servo-slider">
+                <input type="range" min="0" max="180" value="90" class="slider" id="servo-elbow" oninput="moveServo('elbow', this.value)">
+                <div class="servo-value" id="value-elbow">90°</div>
+            </div>
+        </div>
+        
+        <div class="servo-control">
+            <label class="servo-label">Wrist (Handgelenk): <span id="wrist-angle">90</span>°</label>
+            <div class="servo-slider">
+                <input type="range" min="0" max="180" value="90" class="slider" id="servo-wrist" oninput="moveServo('wrist', this.value)">
+                <div class="servo-value" id="value-wrist">90°</div>
+            </div>
+        </div>
+        
+        <div class="servo-control">
+            <label class="servo-label">Gripper (Greifer): <span id="gripper-angle">90</span>°</label>
+            <div class="servo-slider">
+                <input type="range" min="0" max="180" value="90" class="slider" id="servo-gripper" oninput="moveServo('gripper', this.value)">
+                <div class="servo-value" id="value-gripper">90°</div>
+            </div>
+        </div>
+        
+        <div class="servo-control">
+            <label class="servo-label">Tool (Werkzeug): <span id="tool-angle">0</span>°</label>
+            <div class="servo-slider">
+                <input type="range" min="0" max="180" value="0" class="slider" id="servo-tool" oninput="moveServo('tool', this.value)">
+                <div class="servo-value" id="value-tool">0°</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>🤖 Automatische Aktionen</h3>
+    <div class="grid">
+        <button class="btn btn-success" onclick="weedRemovalSequence()">🌿 Unkraut-Entfernung Sequenz</button>
+        <button class="btn btn-primary" onclick="activateTool()">🔧 Werkzeug aktivieren (3s)</button>
+        <button class="btn btn-warning" onclick="calibrateServos()">⚙️ Servo-Kalibrierung</button>
+        <button class="btn btn-info" onclick="getArmStatus()">📊 Status anzeigen</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📊 Roboterarm Status</h3>
+    <div id="arm-status" class="status-display">Lade Status...</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/arm.js') }}"></script>
+<script>
+// Globale Funktionen für Template-Aufrufe verfügbar machen
+function moveServo(joint, angle) {
+    if (window.armControl) {
+        window.armControl.moveServo(joint, angle);
+    }
+}
+
+function moveToPreset(preset) {
+    if (window.armControl) {
+        window.armControl.moveToPreset(preset);
+    }
+}
+
+function emergencyStop() {
+    if (window.armControl) {
+        window.armControl.emergencyStop();
+    }
+}
+
+function weedRemovalSequence() {
+    if (window.armControl) {
+        window.armControl.weedRemovalSequence();
+    }
+}
+
+function activateTool() {
+    if (window.armControl) {
+        window.armControl.activateTool();
+    }
+}
+
+function calibrateServos() {
+    if (window.armControl) {
+        window.armControl.calibrateServos();
+    }
+}
+
+function getArmStatus() {
+    if (window.armControl) {
+        window.armControl.getArmStatus();
+    }
+}
+</script>
+{% endblock %}

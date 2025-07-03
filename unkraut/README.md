@@ -6,7 +6,7 @@ Autonomer Unkraut-Roboter mit Raspberry Pi für die automatisierte oder manuell 
 
 - 📷 Kamerastreaming über mjpg-streamer
 - 🌐 Webbasierte Steuerung per Tablet/Handy/PC
-- 🛜 WLAN Access Point Modus (offline-autark)
+- 🛜 WLAN Access Point Modus (offline-autark)  
 - 🔧 Erweiterbar mit Motorsteuerung, AI-Vision, GPS
 - 📦 Backup- und Wiederherstellungssystem
 
@@ -31,6 +31,18 @@ python run.py
 - Motoren/Servos
 - Sensoren
 
+## Projekt-Beschreibung
+
+**Unkraut-2025** ist ein DIY-Roboterprojekt auf Basis eines Raspberry Pi, das die **automatisierte oder manuell gesteuerte Bekämpfung von Unkraut** im Garten oder auf Feldern ermöglicht. Ziel ist es, eine flexible Plattform zu schaffen, die per WLAN steuerbar ist, Kamerastreaming unterstützt und Sensoren/Aktoren in Echtzeit verarbeitet – **ohne Internetanbindung** vor Ort.
+
+## Use Cases
+
+- Autonomer Gartenhelfer mit Kameraüberwachung
+- Plattform für Machine-Learning-Experimente (Unkrauterkennung)
+- Steuerbarer Roboter für Umwelttechnik, Landwirtschaft, Bildung
+- Autarke IoT-Plattform für Kamera- und Sensordatenaufnahme
+
 ## Lizenz
 
 MIT License
+

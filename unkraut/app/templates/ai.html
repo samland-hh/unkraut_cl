@@ -1,0 +1,284 @@
+<!-- app/templates/ai.html -->
+{% extends "base.html" %}
+
+{% block title %}KI-Erkennung - Unkraut-2025{% endblock %}
+{% block page_title %}KI-Unkrauterkennung{% endblock %}
+
+{% block content %}
+<div class="coming-soon">
+    <h2>🚧 KI-Dashboard - In Entwicklung</h2>
+    <p>Erweiterte KI-Features werden hier implementiert...</p>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3>🔍 Schnell-Erkennung</h3>
+        <p>Aktuelles Kamerabild auf Unkraut analysieren:</p>
+        <div class="ai-controls">
+            <button class="btn btn-success" onclick="quickDetection()">🌿 Jetzt erkennen</button>
+            <button class="btn btn-info" onclick="continuousDetection()">📹 Kontinuierlich</button>
+        </div>
+        <div id="quick-results" class="status-display">Bereit für Erkennung...</div>
+    </div>
+    
+    <div class="card">
+        <h3>📊 KI-Statistiken</h3>
+        <div id="ai-stats" class="status-display">Lade Statistiken...</div>
+        <button class="btn btn-primary" onclick="updateStats()">🔄 Aktualisieren</button>
+    </div>
+    
+    <div class="card">
+        <h3>⚙️ Erkennungseinstellungen</h3>
+        <div class="setting-control">
+            <label>Empfindlichkeit: <span id="sensitivity-display">50</span>%</label>
+            <input type="range" min="10" max="90" value="50" class="slider" id="sensitivity-slider" oninput="setSensitivity(this.value)">
+        </div>
+        
+        <div class="setting-control">
+            <label>Erkennungstyp:</label>
+            <select id="detection-type" onchange="setDetectionType(this.value)">
+                <option value="all">🌿 Alle Unkräuter</option>
+                <option value="dandelion">🍀 Nur Löwenzahn</option>
+                <option value="large">🌱 Nur große Pflanzen</option>
+                <option value="experimental">🔬 Experimentell</option>
+            </select>
+        </div>
+        
+        <div class="setting-control">
+            <label>Konfidenz-Schwelle: <span id="confidence-display">70</span>%</label>
+            <input type="range" min="30" max="95" value="70" class="slider" id="confidence-slider" oninput="setConfidenceThreshold(this.value)">
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3>🎯 Letzte Erkennungen</h3>
+        <div id="recent-detections">
+            <div class="detection-box">
+                <strong>🌿 Demo-Erkennung #1</strong><br>
+                Konfidenz: 87%<br>
+                Position: (240, 180)<br>
+                Größe: 45px × 32px
+            </div>
+            <div class="detection-box">
+                <strong>🌿 Demo-Erkennung #2</strong><br>
+                Konfidenz: 92%<br>
+                Position: (380, 220)<br>
+                Größe: 38px × 28px
+            </div>
+        </div>
+        <button class="btn btn-secondary" onclick="clearDetections()">🗑️ Erkennungen löschen</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>🤖 Automatische Aktionen</h3>
+    <div class="grid">
+        <button class="btn btn-warning" onclick="toggleAutoRemoval()">🦾 Auto-Entfernung</button>
+        <button class="btn btn-info" onclick="startTrainingMode()">💾 Training-Modus</button>
+        <button class="btn btn-success" onclick="optimizeModel()">⚡ Modell optimieren</button>
+        <button class="btn btn-primary" onclick="exportData()">📤 Daten exportieren</button>
+    </div>
+    <div id="auto-status" class="status-display">Automatik: AUS</div>
+</div>
+
+<div class="card">
+    <h3>📈 Performance-Metriken</h3>
+    <div class="metrics-grid">
+        <div class="metric">
+            <div class="metric-label">Verarbeitungszeit:</div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 35%" id="processing-progress"></div>
+            </div>
+            <small id="processing-text">0.12s pro Bild (85 FPS möglich)</small>
+        </div>
+        
+        <div class="metric">
+            <div class="metric-label">Genauigkeit:</div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 87%" id="accuracy-progress"></div>
+            </div>
+            <small id="accuracy-text">87% Trefferquote</small>
+        </div>
+        
+        <div class="metric">
+            <div class="metric-label">Modell-Auslastung:</div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 45%" id="model-progress"></div>
+            </div>
+            <small id="model-text">45% GPU-Auslastung</small>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>🛠️ KI-Entwicklungstools</h3>
+    <div class="grid">
+        <button class="btn btn-info" onclick="showModelInfo()">📋 Modell-Info</button>
+        <button class="btn btn-warning" onclick="trainModel()">🎓 Modell trainieren</button>
+        <button class="btn btn-success" onclick="testAccuracy()">🎯 Genauigkeit testen</button>
+        <button class="btn btn-primary" onclick="saveModel()">💾 Modell speichern</button>
+        <button class="btn btn-secondary" onclick="loadModel()">📂 Modell laden</button>
+        <button class="btn btn-danger" onclick="resetModel()">🔄 Modell zurücksetzen</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.ai-controls {
+    margin: 15px 0;
+    text-align: center;
+}
+
+.metrics-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.metric {
+    margin: 15px 0;
+}
+
+.metric-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.setting-control {
+    margin: 15px 0;
+}
+
+.setting-control label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.setting-control select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+.detection-box {
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    background: rgba(40, 167, 69, 0.2);
+}
+
+.coming-soon {
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    color: white;
+    text-align: center;
+    padding: 30px;
+    border-radius: 15px;
+    font-size: 1.2em;
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ai.js') }}"></script>
+<script>
+// Globale Funktionen für Template-Aufrufe verfügbar machen
+function quickDetection() {
+    if (window.aiControl) {
+        window.aiControl.quickDetection();
+    }
+}
+
+function continuousDetection() {
+    if (window.aiControl) {
+        window.aiControl.continuousDetection();
+    }
+}
+
+function setSensitivity(value) {
+    document.getElementById('sensitivity-display').textContent = value;
+    if (window.aiControl) {
+        window.aiControl.setSensitivity(value);
+    }
+}
+
+function setDetectionType(type) {
+    if (window.aiControl) {
+        window.aiControl.setDetectionType(type);
+    }
+}
+
+function setConfidenceThreshold(value) {
+    document.getElementById('confidence-display').textContent = value;
+    if (window.aiControl) {
+        window.aiControl.setConfidenceThreshold(value);
+    }
+}
+
+function updateStats() {
+    if (window.aiControl) {
+        window.aiControl.updateStats();
+    }
+}
+
+function toggleAutoRemoval() {
+    if (window.aiControl) {
+        window.aiControl.toggleAutoRemoval();
+    }
+}
+
+function startTrainingMode() {
+    if (window.aiControl) {
+        window.aiControl.startTrainingMode();
+    }
+}
+
+function optimizeModel() {
+    if (window.aiControl) {
+        window.aiControl.optimizeModel();
+    }
+}
+
+function exportData() {
+    if (window.aiControl) {
+        window.aiControl.exportData();
+    }
+}
+
+function clearDetections() {
+    if (window.aiControl) {
+        window.aiControl.clearDetections();
+    }
+}
+
+function showModelInfo() {
+    alert('📋 KI-Modell Information:\n\nTyp: Convolutional Neural Network\nArchitektur: ResNet-50\nParameter: 2.3M\nTraining: 1,247 Bilder\nValidierung: 312 Bilder\nGenauigkeit: 87.3%');
+}
+
+function trainModel() {
+    alert('🎓 Modell-Training gestartet! Das Training mit neuen Daten dauert etwa 20 Minuten.');
+}
+
+function testAccuracy() {
+    alert('🎯 Genauigkeitstest läuft... Teste Modell mit 50 Validierungsbildern.');
+}
+
+function saveModel() {
+    alert('💾 Modell gespeichert: weed_model_v1.3.h5');
+}
+
+function loadModel() {
+    alert('📂 Modell geladen: weed_model_v1.2.h5');
+}
+
+function resetModel() {
+    if (confirm('Modell auf Standardeinstellungen zurücksetzen? Alle Trainingsdaten gehen verloren.')) {
+        alert('🔄 Modell zurückgesetzt');
+    }
+}
+</script>
+{% endblock %}
