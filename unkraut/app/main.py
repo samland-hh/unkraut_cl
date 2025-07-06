@@ -1,4 +1,4 @@
-# app/main.py - Saubere Unkraut-2025 Flask App
+# app/main.py - Erweiterte Unkraut-2025 Flask App mit Combined Route
 """
 Unkraut-2025 Flask Hauptanwendung
 Modulare Architektur mit separaten Routes und Templates
@@ -15,7 +15,7 @@ def create_app():
         os.makedirs(directory, exist_ok=True)
     
     # Routes importieren und registrieren
-    from .routes import main_routes, control_routes, arm_routes, camera_routes, ai_routes, api_routes
+    from .routes import main_routes, control_routes, arm_routes, camera_routes, ai_routes, api_routes, combined_routes, debug_routes
     
     app.register_blueprint(main_routes.bp)
     app.register_blueprint(control_routes.bp)
@@ -23,8 +23,10 @@ def create_app():
     app.register_blueprint(camera_routes.bp)
     app.register_blueprint(ai_routes.bp)
     app.register_blueprint(api_routes.bp)
+    app.register_blueprint(combined_routes.bp)  # Neue kombinierte Route
+    app.register_blueprint(debug_routes.bp)     # Debug-Route für Mobile
     
-    print("✅ Unkraut-2025 Flask App geladen (modulare Architektur)")
+    print("✅ Unkraut-2025 Flask App geladen (modulare Architektur + Combined)")
     return app
 
 # Für den Import

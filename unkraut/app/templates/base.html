@@ -3,7 +3,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>{% block title %}Unkraut-2025{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
@@ -11,21 +11,235 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🤖 {% block page_title %}Unkraut-2025{% endblock %}</h1>
-            
-            <nav class="nav">
-                <a href="/" class="btn btn-primary nav-link">🏠 Dashboard</a>
-                <a href="/control" class="btn btn-success nav-link">🎮 Fahrzeug</a>
-                <a href="/arm" class="btn btn-warning nav-link">🦾 Roboterarm</a>
-                <a href="/camera" class="btn btn-info nav-link">📷 Kamera</a>
-                <a href="/ai" class="btn btn-secondary nav-link">🧠 KI-Erkennung</a>
-            </nav>
+            <div class="header-content">
+                <h3>{% block page_title %}Dashboard{% endblock %}</h3>
+                <a href="/" class="dashboard-link"> 🏠 </a>
+            </div>
         </header>
 
         <main class="main-content">
             {% block content %}{% endblock %}
         </main>
+        
+        <!-- Mobile Status Bar -->
+        <div class="mobile-status" id="mobile-status">
+            <span id="connection-indicator">🟢</span>
+            <span id="current-page">{{ request.endpoint or 'Dashboard' }}</span>
+            <span id="mobile-time"></span>
+        </div>
     </div>
+
+    <script>
+        // === NAVIGATION ===
+        function navigateTo(path) {
+            try {
+                console.log('Navigate to:', path);
+                window.location.href = path;
+            } catch (error) {
+                console.error('Navigation error:', error);
+                showMobileNotification('Navigationsfehler: ' + error.message, 'error');
+            }
+        }
+        
+        // === CONNECTION MONITOR ===
+        function checkMobileConnection() {
+            const indicator = document.getElementById('connection-indicator');
+            
+            fetch('/api/system/status', { 
+                method: 'HEAD',
+                timeout: 5000
+            })
+            .then(() => {
+                if (indicator) indicator.textContent = '🟢';
+            })
+            .catch(() => {
+                if (indicator) indicator.textContent = '🔴';
+            });
+        }
+        
+        // === NOTIFICATION SYSTEM ===
+        function showMobileNotification(message, type = 'info') {
+            const existing = document.querySelector('.mobile-notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `mobile-notification mobile-notification-${type}`;
+            notification.textContent = message;
+            
+            Object.assign(notification.style, {
+                position: 'fixed',
+                top: '10px',
+                left: '10px',
+                right: '10px',
+                padding: '12px 15px',
+                borderRadius: '8px',
+                color: 'white',
+                fontWeight: 'bold',
+                zIndex: '9999',
+                opacity: '0',
+                transform: 'translateY(-20px)',
+                transition: 'all 0.3s ease',
+                fontSize: '14px',
+                textAlign: 'center'
+            });
+            
+            const colors = {
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107',
+                info: '#17a2b8'
+            };
+            
+            notification.style.backgroundColor = colors[type] || colors.info;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateY(0)';
+            }, 100);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateY(-20px)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // === TIME UPDATE ===
+        function updateMobileTime() {
+            const timeElement = document.getElementById('mobile-time');
+            if (timeElement) {
+                timeElement.textContent = new Date().toLocaleTimeString('de-DE');
+            }
+        }
+        
+        // === TOUCH EVENTS ===
+        function setupTouchEvents() {
+            document.querySelectorAll('.btn, .dashboard-link').forEach(btn => {
+                btn.addEventListener('touchstart', function() {
+                    this.style.opacity = '0.7';
+                    this.style.transform = 'scale(0.95)';
+                });
+                
+                btn.addEventListener('touchend', function() {
+                    this.style.opacity = '1';
+                    this.style.transform = 'scale(1)';
+                });
+                
+                btn.addEventListener('touchcancel', function() {
+                    this.style.opacity = '1';
+                    this.style.transform = 'scale(1)';
+                });
+            });
+        }
+        
+        // === KEYBOARD SHORTCUTS ===
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                if (document.activeElement.tagName === 'INPUT' || 
+                    document.activeElement.tagName === 'TEXTAREA' ||
+                    document.activeElement.tagName === 'SELECT') {
+                    return;
+                }
+                
+                switch(e.code) {
+                    case 'Space':
+                        e.preventDefault();
+                        if (typeof stopAll === 'function') {
+                            stopAll();
+                        } else if (typeof emergencyStop === 'function') {
+                            emergencyStop();
+                        }
+                        break;
+                    case 'KeyH':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            navigateTo('/');
+                        }
+                        break;
+                    case 'KeyC':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            navigateTo('/combined');
+                        }
+                        break;
+                }
+            });
+        }
+        
+        // === INITIALIZATION ===
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Unkraut-2025 Base Template geladen');
+            
+            // Setup functions
+            setupTouchEvents();
+            setupKeyboardShortcuts();
+            
+            // Mobile-spezifische Initialisierung
+            if (window.innerWidth <= 768) {
+                showMobileNotification('📱 Mobile-Modus aktiv', 'info');
+            }
+            
+            // Connection Check alle 30 Sekunden
+            setInterval(checkMobileConnection, 30000);
+            checkMobileConnection();
+            
+            // Time Update alle 10 Sekunden
+            setInterval(updateMobileTime, 10000);
+            updateMobileTime();
+            
+            // Visibility Change Handler
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    checkMobileConnection();
+                    updateMobileTime();
+                }
+            });
+            
+            console.log('✅ Mobile Features initialized');
+            console.log('📱 Screen size:', window.innerWidth + 'x' + window.innerHeight);
+            console.log('👆 Touch support:', 'ontouchstart' in window);
+        });
+        
+        // === ERROR HANDLER ===
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error:', e.error);
+            showMobileNotification('JS-Fehler: ' + e.message, 'error');
+        });
+        
+        // === GLOBALE FUNKTIONEN ===
+        window.showNotification = showMobileNotification;
+        window.navigateToPage = navigateTo;
+        
+        window.apiRequest = async function(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error(`API Request failed: ${url}`, error);
+                throw error;
+            }
+        };
+        
+        console.log('🔧 Global functions exported');
+    </script>
 
     <script src="{{ url_for('static', filename='js/common.js') }}"></script>
     {% block extra_js %}{% endblock %}

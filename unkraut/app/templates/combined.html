@@ -1,0 +1,66 @@
+<!-- app/templates/combined.html -->
+{% extends "base.html" %}
+
+{% block title %}Kamera + Roboterarm - Unkraut-2025{% endblock %}
+{% block page_title %}Kamera+Arm{% endblock %}
+
+{% block content %}
+<!-- 50/50 Split: Kamera oben, Servo-Steuerung unten -->
+<div class="split-layout">
+    <!-- Kamera Sektion (50% Höhe) -->
+    <div class="camera-half">
+        <div class="card camera-card">
+            <img id="camera-stream" src="/api/camera/stream" alt="Kamera Stream">
+            <div id="detection-results" class="detection-status">Keine Erkennungen</div>
+        </div>
+    </div>
+    
+    <!-- Servo-Steuerung (50% Höhe) -->
+    <div class="servo-half">
+        <div class="card servo-card">
+            <!-- 2x3 Servo Grid -->
+            <div class="servo-grid-mobile">
+                <div class="servo-control">
+                    <div class="servo-label">Tool: <span id="tool-angle">0</span>°</div>
+                    <input type="range" min="0" max="180" value="0" class="servo-slider" id="servo-tool" oninput="moveServo('tool', this.value)">
+                </div>
+                
+                <div class="servo-control">
+                    <div class="servo-label">Gripper: <span id="gripper-angle">90</span>°</div>
+                    <input type="range" min="0" max="180" value="90" class="servo-slider" id="servo-gripper" oninput="moveServo('gripper', this.value)">
+                </div>
+                
+                <div class="servo-control">
+                    <div class="servo-label">Wrist: <span id="wrist-angle">90</span>°</div>
+                    <input type="range" min="0" max="180" value="90" class="servo-slider" id="servo-wrist" oninput="moveServo('wrist', this.value)">
+                </div>
+                
+                <div class="servo-control">
+                    <div class="servo-label">Elbow: <span id="elbow-angle">90</span>°</div>
+                    <input type="range" min="0" max="180" value="90" class="servo-slider" id="servo-elbow" oninput="moveServo('elbow', this.value)">
+                </div>
+                
+                <div class="servo-control">
+                    <div class="servo-label">Shoulder: <span id="shoulder-angle">90</span>°</div>
+                    <input type="range" min="0" max="180" value="90" class="servo-slider" id="servo-shoulder" oninput="moveServo('shoulder', this.value)">
+                </div>
+                
+                <div class="servo-control">
+                    <div class="servo-label">Base: <span id="base-angle">90</span>°</div>
+                    <input type="range" min="0" max="180" value="90" class="servo-slider" id="servo-base" oninput="moveServo('base', this.value)">
+                </div>
+            </div>
+            
+            <!-- Action Buttons: Links und Rechts -->
+            <div class="action-row">
+                <button class="btn btn-primary action-btn-left" onclick="moveToPreset('home')">🏠 Home</button>
+                <button class="btn btn-danger action-btn-right" onclick="emergencyStop()">🚨 Stop</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/combined.js') }}"></script>
+{% endblock %}

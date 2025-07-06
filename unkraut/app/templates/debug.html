@@ -1,0 +1,259 @@
+<!-- app/templates/debug.html -->
+{% extends "base.html" %}
+
+{% block title %}Debug - Unkraut-2025{% endblock %}
+{% block page_title %}Debug & Problemdiagnose{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h3>🔧 Mobile Debug-Informationen</h3>
+    <p>Diese Seite hilft bei der Diagnose von Mobile- und Netzwerk-Problemen.</p>
+    
+    <div class="debug-buttons">
+        <button class="btn btn-primary" onclick="testNavigation()">🧭 Navigation testen</button>
+        <button class="btn btn-info" onclick="loadNetworkInfo()">🌐 Netzwerk-Info</button>
+        <button class="btn btn-success" onclick="testAPI()">📡 API testen</button>
+        <button class="btn btn-warning" onclick="testCamera()">📷 Kamera testen</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📱 Geräte-Informationen</h3>
+    <div id="device-info" class="status-display">Lade Geräte-Informationen...</div>
+</div>
+
+<div class="card">
+    <h3>🌐 Netzwerk-Informationen</h3>
+    <div id="network-info" class="status-display">Klicke auf "Netzwerk-Info" um Daten zu laden</div>
+</div>
+
+<div class="card">
+    <h3>🧭 Navigation Test</h3>
+    <div id="navigation-test" class="status-display">Klicke auf "Navigation testen" um zu starten</div>
+</div>
+
+<div class="card">
+    <h3>📡 API Test</h3>
+    <div id="api-test" class="status-display">Klicke auf "API testen" um zu starten</div>
+</div>
+
+<div class="card">
+    <h3>🔗 Schnell-Links (für Copy/Paste)</h3>
+    <div class="quick-links">
+        <div class="link-item">
+            <strong>Dashboard:</strong> 
+            <span id="dashboard-link" onclick="copyToClipboard(this.textContent)">http://192.168.251.1:5000/</span>
+        </div>
+        <div class="link-item">
+            <strong>Fahrzeug:</strong> 
+            <span id="control-link" onclick="copyToClipboard(this.textContent)">http://192.168.251.1:5000/control</span>
+        </div>
+        <div class="link-item">
+            <strong>Kamera+Arm:</strong> 
+            <span id="combined-link" onclick="copyToClipboard(this.textContent)">http://192.168.251.1:5000/combined</span>
+        </div>
+        <div class="link-item">
+            <strong>Debug:</strong> 
+            <span id="debug-link" onclick="copyToClipboard(this.textContent)">http://192.168.251.1:5000/debug</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.debug-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.quick-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.link-item {
+    background: rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.link-item span {
+    color: #17a2b8;
+    word-break: break-all;
+    user-select: all;
+}
+
+.link-item:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+@media (max-width: 768px) {
+    .debug-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .link-item {
+        font-size: 14px;
+        padding: 8px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Geräte-Informationen laden
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeviceInfo();
+    updateQuickLinks();
+});
+
+function loadDeviceInfo() {
+    const deviceInfo = {
+        'Browser': navigator.userAgent,
+        'Bildschirmgröße': `${screen.width}x${screen.height}`,
+        'Viewport': `${window.innerWidth}x${window.innerHeight}`,
+        'Touch-Unterstützung': 'ontouchstart' in window ? 'Ja' : 'Nein',
+        'Online': navigator.onLine ? 'Ja' : 'Nein',
+        'Sprache': navigator.language,
+        'Platform': navigator.platform,
+        'Cookies aktiviert': navigator.cookieEnabled ? 'Ja' : 'Nein',
+        'Local Storage': typeof(Storage) !== "undefined" ? 'Ja' : 'Nein',
+        'URL': window.location.href,
+        'Referrer': document.referrer || 'Keine'
+    };
+    
+    let infoText = '';
+    for (const [key, value] of Object.entries(deviceInfo)) {
+        infoText += `${key}: ${value}\n`;
+    }
+    
+    document.getElementById('device-info').textContent = infoText;
+}
+
+async function loadNetworkInfo() {
+    try {
+        const response = await fetch('/api/debug/network');
+        const data = await response.json();
+        
+        let infoText = '=== SERVER ===\n';
+        for (const [key, value] of Object.entries(data.server)) {
+            infoText += `${key}: ${value}\n`;
+        }
+        
+        infoText += '\n=== IP-ADRESSEN ===\n';
+        data.ip_addresses.forEach(addr => {
+            infoText += `${addr.interface}: ${addr.ip} (${addr.netmask})\n`;
+        });
+        
+        infoText += '\n=== CLIENT ===\n';
+        for (const [key, value] of Object.entries(data.client)) {
+            infoText += `${key}: ${value}\n`;
+        }
+        
+        document.getElementById('network-info').textContent = infoText;
+        
+    } catch (error) {
+        document.getElementById('network-info').textContent = `Fehler: ${error.message}`;
+    }
+}
+
+async function testNavigation() {
+    const testResults = [];
+    const pages = ['/', '/control', '/arm', '/camera', '/combined', '/ai'];
+    
+    document.getElementById('navigation-test').textContent = 'Teste Navigation...';
+    
+    for (const page of pages) {
+        try {
+            const response = await fetch(page, { method: 'HEAD' });
+            testResults.push(`${page}: ${response.status} ${response.statusText}`);
+        } catch (error) {
+            testResults.push(`${page}: FEHLER - ${error.message}`);
+        }
+    }
+    
+    document.getElementById('navigation-test').textContent = testResults.join('\n');
+}
+
+async function testAPI() {
+    const testResults = [];
+    const apis = [
+        '/api/system/status',
+        '/api/arm/info', 
+        '/api/camera/capture',
+        '/api/ai/detect',
+        '/api/control/status'
+    ];
+    
+    document.getElementById('api-test').textContent = 'Teste APIs...';
+    
+    for (const api of apis) {
+        try {
+            const response = await fetch(api);
+            const data = await response.json();
+            testResults.push(`${api}: ✅ OK (${response.status})`);
+        } catch (error) {
+            testResults.push(`${api}: ❌ FEHLER - ${error.message}`);
+        }
+    }
+    
+    document.getElementById('api-test').textContent = testResults.join('\n');
+}
+
+function testCamera() {
+    const testImg = document.createElement('img');
+    testImg.onload = function() {
+        showNotification('📷 Kamera-Stream funktioniert!', 'success');
+    };
+    testImg.onerror = function() {
+        showNotification('❌ Kamera-Stream nicht erreichbar', 'error');
+    };
+    testImg.src = '/api/camera/stream';
+}
+
+function updateQuickLinks() {
+    const baseUrl = window.location.origin;
+    document.getElementById('dashboard-link').textContent = baseUrl + '/';
+    document.getElementById('control-link').textContent = baseUrl + '/control';
+    document.getElementById('combined-link').textContent = baseUrl + '/combined';
+    document.getElementById('debug-link').textContent = baseUrl + '/debug';
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showNotification('📋 Link kopiert!', 'success');
+    }).catch(() => {
+        showNotification('❌ Kopieren fehlgeschlagen', 'error');
+    });
+}
+
+// Simple Notification für Debug-Seite
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#28a745' : '#dc3545'};
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        font-weight: bold;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        document.body.removeChild(notification);
+    }, 3000);
+}
+</script>
+{% endblock %}

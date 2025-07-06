@@ -2,27 +2,73 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard - Unkraut-2025{% endblock %}
-{% block page_title %}Dashboard - Autonomer Roboter mit Arm{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="grid">
-    <div class="card">
-        <h3>📊 System Status</h3>
-        <div id="system-status">Lade Status...</div>
-        <button class="btn btn-primary" onclick="updateStatus()">Aktualisieren</button>
-    </div>
-    
-    <div class="card">
-        <h3>📷 Live Kamera</h3>
-        <img id="camera-stream" src="/api/camera/stream" alt="Kamera Stream"><br>
-        <button class="btn btn-primary" onclick="captureImage()">📸 Foto</button>
-        <button class="btn btn-success" onclick="detectWeeds()">🔍 Unkraut erkennen</button>
+<!-- Navigation zu allen Seiten -->
+<div class="card">
+    <div class="section-title">🚀 Navigation</div>
+    <div class="nav-grid">
+        <a href="/control" class="nav-card btn-success">
+            <div class="nav-icon">🎮</div>
+            <div class="nav-label">Fahrzeug</div>
+            <div class="nav-desc">Roboter steuern</div>
+        </a>
+        
+        <a href="/arm" class="nav-card btn-warning">
+            <div class="nav-icon">🦾</div>
+            <div class="nav-label">Roboterarm</div>
+            <div class="nav-desc">Servo-Steuerung</div>
+        </a>
+        
+        <a href="/camera" class="nav-card btn-info">
+            <div class="nav-icon">📷</div>
+            <div class="nav-label">Kamera</div>
+            <div class="nav-desc">Live-Stream</div>
+        </a>
+        
+        <a href="/combined" class="nav-card btn-danger">
+            <div class="nav-icon">🎯</div>
+            <div class="nav-label">Kamera+Arm</div>
+            <div class="nav-desc">Kombiniert</div>
+        </a>
+        
+        <a href="/ai" class="nav-card btn-secondary">
+            <div class="nav-icon">🧠</div>
+            <div class="nav-label">KI-Erkennung</div>
+            <div class="nav-desc">Unkraut erkennen</div>
+        </a>
+        
+        <a href="/debug" class="nav-card btn-dark">
+            <div class="nav-icon">🔧</div>
+            <div class="nav-label">Debug</div>
+            <div class="nav-desc">Problemdiagnose</div>
+        </a>
     </div>
 </div>
 
+<!-- System Status -->
+<div class="grid">
+    <div class="card">
+        <div class="section-title">📊 System Status</div>
+        <div id="system-status">Lade Status...</div>
+        <button class="btn btn-primary" onclick="updateStatus()">🔄 Aktualisieren</button>
+    </div>
+    
+    <div class="card">
+        <div class="section-title">📷 Live Kamera</div>
+        <img id="camera-stream" src="/api/camera/stream" alt="Kamera Stream">
+        <div class="camera-quick-actions">
+            <button class="btn btn-primary" onclick="captureImage()">📸 Foto</button>
+            <button class="btn btn-success" onclick="detectWeeds()">🔍 Unkraut erkennen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Schnellaktionen -->
 <div class="card">
-    <h3>🚀 Schnellaktionen</h3>
-    <div class="control-grid">
+    <div class="section-title">🚀 Schnellaktionen</div>
+    <div class="quick-actions-grid">
         <button class="btn btn-success" onclick="moveRobot('forward')">⬆️ Vorwärts</button>
         <button class="btn btn-success" onclick="moveRobot('left')">⬅️ Links</button>
         <button class="btn btn-danger" onclick="stopAll()">⏹️ Alles stoppen</button>
@@ -35,9 +81,10 @@
     </div>
 </div>
 
+<!-- Live Status -->
 <div class="card">
-    <h3>🔄 Status Updates</h3>
-    <div id="live-status"></div>
+    <div class="section-title">🔄 Live Status</div>
+    <div id="live-status">Lade Live-Daten...</div>
 </div>
 {% endblock %}
 

@@ -1,0 +1,257 @@
+/* app/static/css/mobile.css - Mobile Erweiterungen */
+
+/* Mobile Navigation Toggle */
+.nav-toggle {
+    display: none;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 10px auto;
+    touch-action: manipulation;
+}
+
+/* Mobile Status Bar */
+.mobile-status {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 15px;
+    font-size: 14px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    /* Container Anpassungen */
+    .container {
+        padding: 10px;
+    }
+    
+    /* Header */
+    .header {
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .header h1 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+    }
+    
+    /* Navigation Toggle anzeigen */
+    .nav-toggle {
+        display: block;
+    }
+    
+    /* Navigation verstecken/anzeigen */
+    .nav {
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+        animation: slideDown 0.3s ease;
+    }
+    
+    .nav.nav-open {
+        display: flex;
+    }
+    
+    /* Navigation Links */
+    .nav-link {
+        width: 100%;
+        text-align: center;
+        padding: 15px;
+        font-size: 16px;
+        margin: 0;
+        border-radius: 8px;
+        display: block;
+        text-decoration: none;
+        touch-action: manipulation;
+    }
+    
+    /* Mobile Status anzeigen */
+    .mobile-status {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* Hauptinhalt Padding für Status Bar */
+    .main-content {
+        padding-bottom: 50px;
+    }
+    
+    /* Touch-optimierte Buttons */
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 12px 20px;
+        font-size: 16px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    }
+    
+    /* Grid Anpassungen */
+    .grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .main-layout {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    /* Kamera */
+    #camera-stream {
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+    }
+    
+    /* Kamera Controls */
+    .camera-controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .camera-controls .btn {
+        width: 100%;
+    }
+    
+    /* Servo Controls */
+    .servo-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .servo-control {
+        background: rgba(255,255,255,0.1);
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    .servo-control label {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    
+    .servo-control input[type="range"] {
+        height: 10px;
+        -webkit-appearance: none;
+        background: rgba(255,255,255,0.3);
+        border-radius: 5px;
+    }
+    
+    .servo-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #28a745;
+        cursor: pointer;
+    }
+    
+    /* Preset Buttons */
+    .preset-grid-wide {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    /* Status Displays */
+    .status-display {
+        font-size: 14px;
+        padding: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    /* Cards */
+    .card {
+        padding: 15px;
+        margin: 8px 0;
+    }
+    
+    .card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+    }
+}
+
+/* Extra kleine Bildschirme */
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.2rem;
+    }
+    
+    .nav-link {
+        font-size: 14px;
+        padding: 12px;
+    }
+    
+    .btn {
+        font-size: 14px;
+        padding: 10px 15px;
+    }
+    
+    .preset-grid-wide {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .servo-control {
+        padding: 12px;
+    }
+    
+    .card {
+        padding: 12px;
+    }
+}
+
+/* Touch-Feedback */
+.btn:active,
+.nav-link:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+/* Swipe-Gesten deaktivieren wo nicht gewünscht */
+.no-swipe {
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Animation für Navigation */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Landscape Modus */
+@media (max-width: 768px) and (orientation: landscape) {
+    .main-layout {
+        grid-template-columns: 1fr 300px;
+        gap: 10px;
+    }
+    
+    .servo-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+}

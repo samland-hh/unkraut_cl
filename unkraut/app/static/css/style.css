@@ -28,18 +28,56 @@ body {
     margin-bottom: 20px;
     backdrop-filter: blur(10px);
     text-align: center;
+    position: relative;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
 .header h1 {
     font-size: 2rem;
-    margin-bottom: 1rem;
+    margin: 0;
+    flex: 1;
 }
 
-.nav {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
+.dashboard-link {
+    background: #28a745;
+    color: white;
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.3s;
+    touch-action: manipulation;
+}
+
+.dashboard-link:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* === MOBILE NAVIGATION === */
+/* Entfernt - verwende jetzt einfachen Dashboard-Link */
+
+/* Mobile Status Bar */
+.mobile-status {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1e3c72;
+    border-top: 2px solid #2a5298;
+    color: white;
+    padding: 8px 15px;
+    font-size: 14px;
+    z-index: 1000;
 }
 
 /* === BUTTONS === */
@@ -62,6 +100,8 @@ body {
 .btn-warning { background: #ffc107; color: black; }
 .btn-info { background: #17a2b8; color: white; }
 .btn-secondary { background: #6c757d; color: white; }
+.btn-dark { background: #343a40; color: white; }
+.btn-light { background: #f8f9fa; color: black; }
 
 .btn:hover {
     transform: translateY(-2px);
@@ -240,24 +280,407 @@ body {
     margin: 20px 0;
 }
 
+/* === DASHBOARD-SPECIFIC STYLES === */
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-align: center;
+    color: #fff;
+}
+
+/* Navigation Grid */
+.nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.nav-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: white;
+    transition: all 0.3s;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid transparent;
+    min-height: 120px;
+    justify-content: center;
+}
+
+.nav-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.3);
+}
+
+.nav-card.btn-success { background: linear-gradient(145deg, #28a745, #20a039); }
+.nav-card.btn-warning { background: linear-gradient(145deg, #ffc107, #e0a800); color: black; }
+.nav-card.btn-info { background: linear-gradient(145deg, #17a2b8, #138496); }
+.nav-card.btn-danger { background: linear-gradient(145deg, #dc3545, #c82333); }
+.nav-card.btn-secondary { background: linear-gradient(145deg, #6c757d, #5a6268); }
+.nav-card.btn-dark { background: linear-gradient(145deg, #343a40, #23272b); }
+
+.nav-icon {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+}
+
+.nav-label {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.nav-desc {
+    font-size: 12px;
+    opacity: 0.8;
+    text-align: center;
+}
+
+/* Quick Actions */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.camera-quick-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+
+/* === COMBINED PAGE: 50/50 DESKTOP LAYOUT === */
+.split-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    height: calc(100vh - 80px);
+    padding: 0;
+}
+
+.camera-half,
+.servo-half {
+    height: 100%;
+    min-height: 0;
+}
+
+.camera-card,
+.servo-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    margin: 0;
+}
+
+/* Kamera 50% - MAXIMALER PLATZ FÜR BILD */
+.camera-half #camera-stream {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    min-height: 0;
+}
+
+.detection-status {
+    font-size: 10px;
+    padding: 3px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    text-align: center;
+    max-height: 30px;
+    overflow: hidden;
+}
+
+/* Servo-Steuerung 50% - 2x3 GRID */
+.servo-grid-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 4px;
+    flex: 1;
+}
+
+.servo-control {
+    background: rgba(255,255,255,0.1);
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.servo-label {
+    font-size: 10px;
+    text-align: center;
+    margin-bottom: 3px;
+    font-weight: bold;
+}
+
+.servo-slider {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    background: rgba(255,255,255,0.3);
+    border-radius: 3px;
+    outline: none;
+}
+
+.servo-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #28a745;
+    cursor: pointer;
+}
+
+.servo-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #28a745;
+    cursor: pointer;
+    border: none;
+}
+
+/* Action Row - Links und Rechts */
+.action-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    gap: 4px;
+}
+
+.action-btn-left,
+.action-btn-right {
+    flex: 1;
+    max-width: 45%;
+    padding: 6px 4px;
+    font-size: 11px;
+    min-height: 32px;
+    font-weight: bold;
+}
+.split-layout {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+    height: calc(100vh - 100px);
+    padding: 0;
+}
+
+.camera-half,
+.servo-half {
+    height: 100%;
+    min-height: 0;
+}
+
+.camera-card,
+.servo-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    margin: 0;
+}
+
+/* Kamera 50% - MAXIMALER PLATZ FÜR BILD */
+.camera-half #camera-stream {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    min-height: 0;
+}
+
+.detection-status {
+    font-size: 10px;
+    padding: 3px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    text-align: center;
+    max-height: 30px;
+    overflow: hidden;
+}
+
+/* Servo-Steuerung 50% - 2x3 GRID */
+.servo-grid-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 4px;
+    flex: 1;
+}
+
+.servo-control {
+    background: rgba(255,255,255,0.1);
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.servo-label {
+    font-size: 10px;
+    text-align: center;
+    margin-bottom: 3px;
+    font-weight: bold;
+}
+
+.servo-slider {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    background: rgba(255,255,255,0.3);
+    border-radius: 3px;
+    outline: none;
+}
+
+.servo-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #28a745;
+    cursor: pointer;
+}
+
+.servo-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #28a745;
+    cursor: pointer;
+    border: none;
+}
+
+/* Action Row - Links und Rechts */
+.action-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    gap: 4px;
+}
+
+.action-btn-left,
+.action-btn-right {
+    flex: 1;
+    max-width: 45%;
+    padding: 6px 4px;
+    font-size: 11px;
+    min-height: 32px;
+    font-weight: bold;
+}
+
 /* === RESPONSIVE === */
 @media (max-width: 768px) {
     .container {
-        padding: 10px;
+        padding: 5px;
+    }
+    
+    /* Kompakter Mobile Header */
+    .header {
+        padding: 8px 10px;
+        margin-bottom: 5px;
+        position: relative;
+    }
+    
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
     }
     
     .header h1 {
-        font-size: 1.5rem;
+        font-size: 1rem;
+        margin: 0;
+        flex: 1;
     }
     
+    .nav-toggle {
+        display: block !important;
+        position: relative;
+        z-index: 1001;
+        background: #28a745 !important;
+        color: white !important;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        min-width: 50px;
+        height: 36px;
+        touch-action: manipulation;
+    }
+    
+    /* Navigation Mobile - OHNE TRANSPARENZ */
     .nav {
+        display: none;
         flex-direction: column;
+        gap: 6px;
+        margin-top: 8px;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #1e3c72;
+        border: 2px solid #2a5298;
+        padding: 15px;
+        border-radius: 0 0 10px 10px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    
+    .nav.nav-open {
+        display: flex;
+    }
+    
+    .nav-link {
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+        font-size: 14px;
+        margin: 0;
+        border-radius: 6px;
+        display: block;
+        text-decoration: none;
+        touch-action: manipulation;
+    }
+    
+    .mobile-status {
+        display: flex;
+        justify-content: space-between;
         align-items: center;
     }
     
+    .main-content {
+        padding-bottom: 45px;
+    }
+    
     .btn {
+        min-height: 44px;
+        min-width: 44px;
         padding: 12px 16px;
-        font-size: 16px;
+        font-size: 14px;
+        touch-action: manipulation;
+    }
+    
+    .grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
     }
     
     .control-grid {
@@ -265,9 +688,129 @@ body {
         max-width: 300px;
     }
     
-    .grid {
+    /* Mobile Layout für Combined Page */
+    .main-layout {
         grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 8px;
+        height: calc(100vh - 120px);
     }
+    
+    .camera-section,
+    .servo-section {
+        height: 100%;
+    }
+    
+    .camera-section .card,
+    .servo-section .card {
+        height: 100%;
+        padding: 10px;
+        margin: 0;
+    }
+    
+    #camera-stream {
+        width: 100%;
+        height: auto;
+        max-height: 35vh;
+    }
+    
+    .camera-controls {
+        flex-direction: row;
+        gap: 5px;
+        margin-top: 8px;
+    }
+    
+    .camera-controls .btn {
+        flex: 1;
+        padding: 8px 4px;
+        font-size: 12px;
+    }
+    
+    /* Kompakte Servo-Steuerung für Mobile */
+    .servo-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        height: calc(100% - 60px);
+    }
+    
+    .servo-control {
+        background: rgba(255,255,255,0.1);
+        padding: 8px;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .servo-control label {
+        font-size: 12px;
+        margin-bottom: 4px;
+        text-align: center;
+    }
+    
+    .servo-control input[type="range"] {
+        height: 8px;
+    }
+    
+    /* Preset Buttons kompakt */
+    .preset-grid-wide {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+    }
+    
+    /* Cards kompakter */
+    .card {
+        padding: 10px;
+        margin: 4px 0;
+    }
+    
+    .card h3 {
+        font-size: 1rem;
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Dashboard sehr kleine Bildschirme */
+    .nav-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    /* Combined Page sehr kleine Bildschirme */
+    .servo-grid-mobile {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+        gap: 2px;
+    }
+    
+    .action-row {
+        gap: 2px;
+        margin-top: 2px;
+    }
+    
+    .action-btn-left,
+    .action-btn-right {
+        font-size: 9px;
+        min-height: 24px;
+        padding: 2px;
+    }
+    
+    .servo-label {
+        font-size: 8px;
+    }
+    
+    .servo-slider::-webkit-slider-thumb {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+.btn:active,
+.nav-link:active {
+    transform: scale(0.95);
+    opacity: 0.8;
 }
 
 /* === ANIMATIONS === */
