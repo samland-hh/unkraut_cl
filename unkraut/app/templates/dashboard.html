@@ -39,6 +39,12 @@
             <div class="nav-desc">Unkraut erkennen</div>
         </a>
         
+        <a href="/docs" class="nav-card btn-primary">
+            <div class="nav-icon">📚</div>
+            <div class="nav-label">Docs</div>
+            <div class="nav-desc">Dokumentation</div>
+        </a>
+        
         <a href="/debug" class="nav-card btn-dark">
             <div class="nav-icon">🔧</div>
             <div class="nav-label">Debug</div>
@@ -67,27 +73,99 @@
 
 <!-- Schnellaktionen -->
 <div class="card">
-    <div class="section-title">🚀 Schnellaktionen</div>
-    <div class="quick-actions-grid">
+    <div class="section-title">⚡ Schnellaktionen</div>
+    <div class="quick-actions">
         <button class="btn btn-success" onclick="moveRobot('forward')">⬆️ Vorwärts</button>
         <button class="btn btn-success" onclick="moveRobot('left')">⬅️ Links</button>
-        <button class="btn btn-danger" onclick="stopAll()">⏹️ Alles stoppen</button>
+        <button class="btn btn-danger" onclick="stopAll()">⏹️ Stopp</button>
         <button class="btn btn-success" onclick="moveRobot('right')">➡️ Rechts</button>
         <button class="btn btn-success" onclick="moveRobot('backward')">⬇️ Rückwärts</button>
-        <div></div>
         <button class="btn btn-warning" onclick="armHome()">🏠 Arm Home</button>
         <button class="btn btn-warning" onclick="armWeedRemove()">🌿 Unkraut entfernen</button>
-        <div></div>
     </div>
 </div>
 
-<!-- Live Status -->
+<!-- Letzte Ereignisse -->
 <div class="card">
-    <div class="section-title">🔄 Live Status</div>
-    <div id="live-status">Lade Live-Daten...</div>
+    <div class="section-title">📋 Status Updates</div>
+    <div id="live-status">Keine Ereignisse...</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+// Dashboard-spezifische JavaScript-Funktionen
+function updateStatus() {
+    fetch('/api/system/status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('system-status').innerHTML = 
+                `CPU: ${data.cpu}%<br>RAM: ${data.memory}%<br>Temp: ${data.temperature}°C`;
+        })
+        .catch(error => {
+            document.getElementById('system-status').innerHTML = 'Status nicht verfügbar';
+        });
+}
+
+function captureImage() {
+    fetch('/api/camera/capture', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            addStatusMessage('📸 Foto aufgenommen: ' + data.filename);
+        });
+}
+
+function detectWeeds() {
+    fetch('/api/ai/detect-weeds', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            addStatusMessage('🔍 Unkraut-Erkennung: ' + data.detections.length + ' Objekte gefunden');
+        });
+}
+
+function moveRobot(direction) {
+    fetch('/api/motors/move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({direction: direction, duration: 1})
+    })
+    .then(response => response.json())
+    .then(data => {
+        addStatusMessage('🚗 Roboter bewegt: ' + direction);
+    });
+}
+
+function stopAll() {
+    fetch('/api/motors/stop', {method: 'POST'})
+        .then(() => addStatusMessage('⏹️ Alle Motoren gestoppt'));
+}
+
+function armHome() {
+    fetch('/api/arm/home', {method: 'POST'})
+        .then(() => addStatusMessage('🏠 Roboterarm in Home-Position'));
+}
+
+function armWeedRemove() {
+    fetch('/api/arm/weed-remove', {method: 'POST'})
+        .then(() => addStatusMessage('🌿 Unkraut-Entfernung gestartet'));
+}
+
+function addStatusMessage(message) {
+    const statusDiv = document.getElementById('live-status');
+    const time = new Date().toLocaleTimeString();
+    statusDiv.innerHTML = `<div>[${time}] ${message}</div>` + statusDiv.innerHTML;
+    
+    // Nur die letzten 10 Nachrichten behalten
+    const lines = statusDiv.querySelectorAll('div');
+    if (lines.length > 10) {
+        lines[lines.length - 1].remove();
+    }
+}
+
+// Status automatisch alle 5 Sekunden aktualisieren
+setInterval(updateStatus, 5000);
+
+// Beim Laden der Seite Status einmal abrufen
+document.addEventListener('DOMContentLoaded', updateStatus);
+</script>
 {% endblock %}

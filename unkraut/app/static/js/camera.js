@@ -1,335 +1,460 @@
-// app/static/js/camera.js - Kamera JavaScript
+// app/static/js/camera.js - Saubere HTML/CSS/JS Trennung
+/**
+ * Kamera-Steuerung für Unkraut-2025
+ * Bindet sich automatisch an DOM-Elemente über data-Attribute
+ */
 
-let cameraState = {
-    isStreaming: true,
-    continuousDetection: false,
-    detectionInterval: null,
-    capturedImages: [],
-    currentSettings: {
-        resolution: '640x480',
-        quality: 80,
-        fps: 30
-    }
-};
-
-// Initialisierung
-document.addEventListener('DOMContentLoaded', function() {
-    setupCameraControls();
-    setupSettingsControls();
-    startStatsUpdates();
-    loadImageGallery();
-    
-    console.log('📷 Kamera-Steuerung geladen');
-});
-
-function setupCameraControls() {
-    // Kamera-Stream Error Handling ist bereits in common.js
-    const cameraStream = document.getElementById('camera-stream');
-    if (cameraStream) {
-        cameraStream.addEventListener('load', function() {
-            cameraState.isStreaming = true;
-            console.log('📹 Kamera-Stream aktiv');
-        });
-    }
-}
-
-function setupSettingsControls() {
-    // Auflösung
-    const resolutionSelect = document.getElementById('resolution-select');
-    if (resolutionSelect) {
-        resolutionSelect.addEventListener('change', function() {
-            cameraState.currentSettings.resolution = this.value;
-        });
-    }
-    
-    // Qualität
-    const qualitySlider = document.getElementById('quality-slider');
-    const qualityDisplay = document.getElementById('quality-display');
-    if (qualitySlider && qualityDisplay) {
-        qualitySlider.addEventListener('input', function() {
-            const quality = parseInt(this.value);
-            qualityDisplay.textContent = quality;
-            cameraState.currentSettings.quality = quality;
-        });
-    }
-    
-    // FPS
-    const fpsSlider = document.getElementById('fps-slider');
-    const fpsDisplay = document.getElementById('fps-display');
-    if (fpsSlider && fpsDisplay) {
-        fpsSlider.addEventListener('input', function() {
-            const fps = parseInt(this.value);
-            fpsDisplay.textContent = fps;
-            cameraState.currentSettings.fps = fps;
-        });
-    }
-}
-
-async function captureImage() {
-    try {
-        showNotification('📸 Nehme Foto auf...', 'info');
-        
-        const response = await apiRequest('/api/camera/capture', {
-            method: 'POST'
-        });
-        
-        if (response.filename) {
-            cameraState.capturedImages.unshift({
-                filename: response.filename,
-                timestamp: new Date(),
-                size: 'Unknown'
-            });
-            
-            showNotification(`📸 Foto gespeichert: ${response.filename}`, 'success');
-            
-            // Galerie aktualisieren
-            setTimeout(loadImageGallery, 500);
-        } else {
-            showNotification(`❌ Foto-Fehler: ${response.error}`, 'error');
-        }
-        
-    } catch (error) {
-        console.error('Image capture failed:', error);
-        showNotification('❌ Kamera-Aufnahme fehlgeschlagen', 'error');
-    }
-}
-
-async function detectWeeds() {
-    try {
-        showNotification('🔄 Analysiere Kamerabild...', 'info');
-        
-        const response = await apiRequest('/api/ai/detect', {
-            method: 'POST'
-        });
-        
-        if (response.detections) {
-            const count = response.detections.length;
-            const confidence = (response.confidence * 100).toFixed(1);
-            const processingTime = response.processing_time;
-            
-            const resultText = `✅ Erkennung abgeschlossen!
-🌿 Objekte gefunden: ${count}
-🎯 Konfidenz: ${confidence}%
-⏱️ Verarbeitungszeit: ${processingTime}s
-🔬 Methode: ${response.method}
-
-📍 Erkennungen:
-${response.detections.map((d, i) => `${i+1}. ${d.class} (${(d.confidence*100).toFixed(1)}%) bei (${d.x}, ${d.y})`).join('\n')}`;
-            
-            const resultsElement = document.getElementById('detection-results');
-            if (resultsElement) {
-                resultsElement.textContent = resultText;
+class CameraController {
+    constructor() {
+        this.state = {
+            isStreaming: true,
+            continuousDetection: false,
+            detectionInterval: null,
+            currentSettings: {
+                resolution: '640x480',
+                quality: 80,
+                fps: 30
             }
-            
-            if (count > 0) {
-                showNotification(`🌿 ${count} Unkraut erkannt!`, 'success');
-            } else {
-                showNotification('✅ Kein Unkraut erkannt', 'success');
-            }
-            
-        } else {
-            const error = response.error || 'Unbekannter Fehler';
-            document.getElementById('detection-results').textContent = `❌ Fehler: ${error}`;
-            showNotification(`❌ Erkennung fehlgeschlagen: ${error}`, 'error');
-        }
-        
-    } catch (error) {
-        console.error('Weed detection failed:', error);
-        document.getElementById('detection-results').textContent = '❌ Verbindungsfehler';
-        showNotification('❌ KI-Erkennung fehlgeschlagen', 'error');
-    }
-}
-
-function toggleStream() {
-    const cameraStream = document.getElementById('camera-stream');
-    const toggleBtn = document.querySelector('button[onclick="toggleStream()"]');
-    
-    if (cameraState.isStreaming) {
-        // Stream stoppen
-        cameraStream.src = '';
-        cameraState.isStreaming = false;
-        if (toggleBtn) toggleBtn.textContent = '▶️ Stream starten';
-        showNotification('⏸️ Kamera-Stream gestoppt', 'info');
-        
-    } else {
-        // Stream starten
-        cameraStream.src = '/api/camera/stream';
-        cameraState.isStreaming = true;
-        if (toggleBtn) toggleBtn.textContent = '⏸️ Stream stoppen';
-        showNotification('▶️ Kamera-Stream gestartet', 'info');
-    }
-}
-
-function continuousDetection() {
-    const btn = document.querySelector('button[onclick="continuousDetection()"]');
-    
-    if (!cameraState.continuousDetection) {
-        // Kontinuierliche Erkennung starten
-        cameraState.continuousDetection = true;
-        if (btn) {
-            btn.textContent = '⏹️ Stoppen';
-            btn.className = 'btn btn-danger';
-        }
-        
-        cameraState.detectionInterval = setInterval(detectWeeds, 3000);
-        showNotification('📹 Kontinuierliche Erkennung gestartet (alle 3s)', 'info');
-        
-    } else {
-        // Kontinuierliche Erkennung stoppen
-        cameraState.continuousDetection = false;
-        if (btn) {
-            btn.textContent = '📹 Kontinuierlich';
-            btn.className = 'btn btn-warning';
-        }
-        
-        if (cameraState.detectionInterval) {
-            clearInterval(cameraState.detectionInterval);
-            cameraState.detectionInterval = null;
-        }
-        
-        showNotification('⏹️ Kontinuierliche Erkennung gestoppt', 'info');
-    }
-}
-
-function clearResults() {
-    const resultsElement = document.getElementById('detection-results');
-    if (resultsElement) {
-        resultsElement.textContent = 'Keine Erkennungen';
-    }
-    showNotification('🗑️ Ergebnisse gelöscht', 'info');
-}
-
-function changeResolution() {
-    const resolution = cameraState.currentSettings.resolution;
-    showNotification(`📐 Auflösung geändert: ${resolution}`, 'info');
-    
-    // Hier würde die Kamera-Auflösung tatsächlich geändert werden
-    // Für jetzt nur visuelles Feedback
-}
-
-function changeQuality(quality) {
-    cameraState.currentSettings.quality = quality;
-    console.log(`Bildqualität: ${quality}%`);
-}
-
-function changeFPS(fps) {
-    cameraState.currentSettings.fps = fps;
-    console.log(`FPS: ${fps}`);
-}
-
-async function updateCameraStats() {
-    try {
-        // Mock-Statistiken da keine echte Kamera-API vorhanden
-        const stats = {
-            resolution: cameraState.currentSettings.resolution,
-            quality: cameraState.currentSettings.quality,
-            fps: cameraState.currentSettings.fps,
-            isStreaming: cameraState.isStreaming,
-            capturedImages: cameraState.capturedImages.length,
-            totalDataSize: '2.3 MB',
-            uptime: '1h 23m'
         };
         
-        const statsText = `📊 Kamera-Statistiken:
+        // Automatische Initialisierung
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
+    }
+    
+    init() {
+        console.log('📷 Initialisiere Kamera-Controller...');
+        
+        // Event-Listener binden
+        this.bindEventListeners();
+        
+        // Kamera-Stream Setup
+        this.setupCameraStream();
+        
+        // Einstellungen laden
+        this.loadSettings();
+        
+        // Statistiken starten
+        this.startStatsUpdates();
+        
+        console.log('✅ Kamera-Controller bereit');
+    }
+    
+    bindEventListeners() {
+        // Kamera-Aktionen
+        document.querySelectorAll('[data-camera-action]').forEach(btn => {
+            const action = btn.dataset.cameraAction;
+            btn.addEventListener('click', (e) => this.handleCameraAction(action, e));
+        });
+        
+        // AI-Aktionen
+        document.querySelectorAll('[data-ai-action]').forEach(btn => {
+            const action = btn.dataset.aiAction;
+            btn.addEventListener('click', (e) => this.handleAIAction(action, e));
+        });
+        
+        // Statistik-Aktionen
+        document.querySelectorAll('[data-stats-action]').forEach(btn => {
+            const action = btn.dataset.statsAction;
+            btn.addEventListener('click', (e) => this.handleStatsAction(action, e));
+        });
+        
+        // Einstellungen
+        document.querySelectorAll('[data-setting]').forEach(element => {
+            const setting = element.dataset.setting;
+            element.addEventListener('change', (e) => this.handleSettingChange(setting, e));
+            element.addEventListener('input', (e) => this.handleSettingInput(setting, e));
+        });
+        
+        console.log('📎 Event-Listener gebunden');
+    }
+    
+    setupCameraStream() {
+        const streamImg = document.getElementById('camera-stream');
+        if (streamImg) {
+            streamImg.addEventListener('load', () => {
+                this.state.isStreaming = true;
+                console.log('📹 Kamera-Stream aktiv');
+            });
+            
+            streamImg.addEventListener('error', () => {
+                console.warn('❌ Kamera-Stream Fehler');
+                this.state.isStreaming = false;
+            });
+        }
+    }
+    
+    loadSettings() {
+        // Einstellungen aus localStorage laden (falls vorhanden)
+        const savedSettings = localStorage.getItem('cameraSettings');
+        if (savedSettings) {
+            try {
+                this.state.currentSettings = {...this.state.currentSettings, ...JSON.parse(savedSettings)};
+                this.applySettings();
+            } catch (e) {
+                console.warn('Gespeicherte Einstellungen konnten nicht geladen werden');
+            }
+        }
+    }
+    
+    applySettings() {
+        // Einstellungen in UI anwenden
+        const resolutionSelect = document.getElementById('resolution-select');
+        if (resolutionSelect) {
+            resolutionSelect.value = this.state.currentSettings.resolution;
+        }
+        
+        const qualitySlider = document.getElementById('quality-slider');
+        const qualityDisplay = document.getElementById('quality-display');
+        if (qualitySlider && qualityDisplay) {
+            qualitySlider.value = this.state.currentSettings.quality;
+            qualityDisplay.textContent = this.state.currentSettings.quality;
+        }
+        
+        const fpsSlider = document.getElementById('fps-slider');
+        const fpsDisplay = document.getElementById('fps-display');
+        if (fpsSlider && fpsDisplay) {
+            fpsSlider.value = this.state.currentSettings.fps;
+            fpsDisplay.textContent = this.state.currentSettings.fps;
+        }
+    }
+    
+    saveSettings() {
+        localStorage.setItem('cameraSettings', JSON.stringify(this.state.currentSettings));
+    }
+    
+    async handleCameraAction(action, event) {
+        const button = event.target;
+        this.setButtonLoading(button, true);
+        
+        try {
+            switch(action) {
+                case 'capture':
+                    await this.captureImage();
+                    break;
+                case 'detect':
+                    await this.detectWeeds();
+                    break;
+                case 'toggle-stream':
+                    this.toggleStream();
+                    break;
+                default:
+                    console.warn(`Unbekannte Kamera-Aktion: ${action}`);
+            }
+        } catch (error) {
+            console.error(`Fehler bei Kamera-Aktion ${action}:`, error);
+            this.showNotification(`❌ Fehler: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading(button, false);
+        }
+    }
+    
+    async handleAIAction(action, event) {
+        const button = event.target;
+        this.setButtonLoading(button, true);
+        
+        try {
+            switch(action) {
+                case 'detect':
+                    await this.detectWeeds();
+                    break;
+                case 'continuous':
+                    this.toggleContinuousDetection();
+                    break;
+                case 'clear':
+                    this.clearDetectionResults();
+                    break;
+                default:
+                    console.warn(`Unbekannte AI-Aktion: ${action}`);
+            }
+        } catch (error) {
+            console.error(`Fehler bei AI-Aktion ${action}:`, error);
+            this.showNotification(`❌ Fehler: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading(button, false);
+        }
+    }
+    
+    async handleStatsAction(action, event) {
+        const button = event.target;
+        this.setButtonLoading(button, true);
+        
+        try {
+            switch(action) {
+                case 'update':
+                    await this.updateCameraStats();
+                    break;
+                default:
+                    console.warn(`Unbekannte Stats-Aktion: ${action}`);
+            }
+        } catch (error) {
+            console.error(`Fehler bei Stats-Aktion ${action}:`, error);
+        } finally {
+            this.setButtonLoading(button, false);
+        }
+    }
+    
+    handleSettingChange(setting, event) {
+        const value = event.target.value;
+        this.state.currentSettings[setting] = value;
+        this.saveSettings();
+        console.log(`⚙️ Einstellung geändert: ${setting} = ${value}`);
+    }
+    
+    handleSettingInput(setting, event) {
+        const value = event.target.value;
+        this.state.currentSettings[setting] = parseInt(value) || value;
+        
+        // Display-Updates für Slider
+        if (setting === 'quality') {
+            const display = document.getElementById('quality-display');
+            if (display) display.textContent = value;
+        } else if (setting === 'fps') {
+            const display = document.getElementById('fps-display');
+            if (display) display.textContent = value;
+        }
+    }
+    
+    async captureImage() {
+        try {
+            this.showNotification('📸 Nehme Foto auf...', 'info');
+            
+            const response = await fetch('/api/camera/capture', {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            
+            if (result.filename) {
+                this.showNotification(`📸 Foto gespeichert: ${result.filename}`, 'success');
+                
+                // Event für andere Module (z.B. Galerie)
+                document.dispatchEvent(new CustomEvent('imageCapture', {
+                    detail: { filename: result.filename }
+                }));
+                
+                return result;
+            } else {
+                throw new Error(result.error || 'Capture fehlgeschlagen');
+            }
+            
+        } catch (error) {
+            console.error('Capture-Fehler:', error);
+            this.showNotification(`❌ Foto-Aufnahme fehlgeschlagen: ${error.message}`, 'error');
+            throw error;
+        }
+    }
+    
+    async detectWeeds() {
+        try {
+            this.showNotification('🔄 Analysiere Kamerabild...', 'info');
+            
+            const response = await fetch('/api/ai/detect', {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            
+            if (result.detections) {
+                const count = result.detections.length;
+                const confidence = (result.confidence * 100).toFixed(1);
+                
+                this.showNotification(`🔍 ${count} Unkraut erkannt (${confidence}% Konfidenz)`, 'success');
+                this.displayDetectionResults(result);
+                
+                return result;
+            } else {
+                throw new Error(result.error || 'Erkennung fehlgeschlagen');
+            }
+            
+        } catch (error) {
+            console.error('Detection-Fehler:', error);
+            this.showNotification(`❌ Unkraut-Erkennung fehlgeschlagen: ${error.message}`, 'error');
+            this.displayDetectionError(error.message);
+            throw error;
+        }
+    }
+    
+    displayDetectionResults(result) {
+        const container = document.getElementById('detection-results');
+        if (!container) return;
+        
+        const count = result.detections.length;
+        const confidence = (result.confidence * 100).toFixed(1);
+        const processingTime = result.processing_time || 'Unbekannt';
+        
+        let html = `
+            <div class="detection-summary">
+                <h4>🔍 Erkennungsergebnis</h4>
+                <p><strong>Objekte gefunden:</strong> ${count}</p>
+                <p><strong>Durchschnittliche Konfidenz:</strong> ${confidence}%</p>
+                <p><strong>Verarbeitungszeit:</strong> ${processingTime}s</p>
+            </div>
+        `;
+        
+        if (result.detections.length > 0) {
+            html += `<div class="detection-list">`;
+            result.detections.forEach((detection, index) => {
+                const conf = (detection.confidence * 100).toFixed(1);
+                html += `
+                    <div class="detection-item">
+                        <span>🌿 ${index + 1}. ${detection.class || 'Unkraut'}</span>
+                        <span>${conf}%</span>
+                        <span>(${detection.x}, ${detection.y})</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+        
+        container.innerHTML = html;
+        container.className = 'detection-results has-results';
+    }
+    
+    displayDetectionError(message) {
+        const container = document.getElementById('detection-results');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="detection-error">
+                <h4>❌ Erkennungsfehler</h4>
+                <p>${message}</p>
+            </div>
+        `;
+        container.className = 'detection-results has-error';
+    }
+    
+    clearDetectionResults() {
+        const container = document.getElementById('detection-results');
+        if (container) {
+            container.innerHTML = '<p>Keine Erkennung durchgeführt</p>';
+            container.className = 'detection-results';
+        }
+        this.showNotification('🧹 Erkennungsergebnisse gelöscht', 'info');
+    }
+    
+    toggleStream() {
+        // Toggle-Logik für Stream
+        const streamImg = document.getElementById('camera-stream');
+        if (!streamImg) return;
+        
+        if (this.state.isStreaming) {
+            streamImg.style.display = 'none';
+            this.state.isStreaming = false;
+            this.showNotification('⏸️ Stream pausiert', 'info');
+        } else {
+            streamImg.style.display = 'block';
+            this.state.isStreaming = true;
+            this.showNotification('▶️ Stream gestartet', 'info');
+        }
+    }
+    
+    toggleContinuousDetection() {
+        if (this.state.continuousDetection) {
+            // Stoppe kontinuierliche Erkennung
+            if (this.state.detectionInterval) {
+                clearInterval(this.state.detectionInterval);
+                this.state.detectionInterval = null;
+            }
+            this.state.continuousDetection = false;
+            this.showNotification('⏹️ Kontinuierliche Erkennung gestoppt', 'info');
+            
+            // Button-Text zurücksetzen
+            const button = document.querySelector('[data-ai-action="continuous"]');
+            if (button) button.textContent = '🔄 Kontinuierliche Erkennung';
+            
+        } else {
+            // Starte kontinuierliche Erkennung
+            this.state.continuousDetection = true;
+            this.state.detectionInterval = setInterval(() => {
+                this.detectWeeds().catch(console.error);
+            }, 5000); // Alle 5 Sekunden
+            
+            this.showNotification('🔄 Kontinuierliche Erkennung gestartet', 'success');
+            
+            // Button-Text ändern
+            const button = document.querySelector('[data-ai-action="continuous"]');
+            if (button) button.textContent = '⏹️ Erkennung stoppen';
+        }
+    }
+    
+    async updateCameraStats() {
+        try {
+            // Mock-Statistiken (später durch echte API ersetzen)
+            const stats = {
+                resolution: this.state.currentSettings.resolution,
+                quality: this.state.currentSettings.quality,
+                fps: this.state.currentSettings.fps,
+                streaming: this.state.isStreaming,
+                uptime: Math.floor(performance.now() / 1000),
+                totalCaptures: localStorage.getItem('totalCaptures') || 0
+            };
+            
+            const statsText = `
 Auflösung: ${stats.resolution}
 Qualität: ${stats.quality}%
 FPS: ${stats.fps}
-Status: ${stats.isStreaming ? 'Streaming' : 'Gestoppt'}
-Aufgenommene Bilder: ${stats.capturedImages}
-Datenvolumen: ${stats.totalDataSize}
-Laufzeit: ${stats.uptime}`;
-
-        const statsElement = document.getElementById('camera-stats');
-        if (statsElement) {
-            statsElement.textContent = statsText;
+Status: ${stats.streaming ? 'Streaming' : 'Gestoppt'}
+Laufzeit: ${stats.uptime}s
+Aufnahmen: ${stats.totalCaptures}
+            `.trim();
+            
+            const container = document.getElementById('camera-stats');
+            if (container) {
+                container.textContent = statsText;
+            }
+            
+            console.log('📊 Kamera-Statistiken aktualisiert');
+            
+        } catch (error) {
+            console.error('Stats-Update-Fehler:', error);
+            const container = document.getElementById('camera-stats');
+            if (container) {
+                container.textContent = '❌ Statistiken nicht verfügbar';
+            }
         }
+    }
+    
+    startStatsUpdates() {
+        // Initiales Update
+        this.updateCameraStats();
         
-    } catch (error) {
-        console.error('Stats update failed:', error);
-        const statsElement = document.getElementById('camera-stats');
-        if (statsElement) {
-            statsElement.textContent = '❌ Statistiken nicht verfügbar';
+        // Auto-Update alle 10 Sekunden
+        setInterval(() => {
+            this.updateCameraStats();
+        }, 10000);
+    }
+    
+    setButtonLoading(button, loading) {
+        if (loading) {
+            button.dataset.loading = 'true';
+            button.disabled = true;
+        } else {
+            delete button.dataset.loading;
+            button.disabled = false;
+        }
+    }
+    
+    showNotification(message, type = 'info') {
+        // Nutze globale Notification-Funktion falls verfügbar
+        if (window.showNotification) {
+            window.showNotification(message, type);
+        } else {
+            // Fallback
+            console.log(`${type.toUpperCase()}: ${message}`);
         }
     }
 }
 
-function loadImageGallery() {
-    const galleryElement = document.getElementById('image-gallery');
-    if (!galleryElement) return;
-    
-    if (cameraState.capturedImages.length === 0) {
-        galleryElement.innerHTML = '<div class="no-images">Keine Bilder aufgenommen</div>';
-        return;
-    }
-    
-    let galleryHTML = '';
-    cameraState.capturedImages.slice(0, 12).forEach((image, index) => {
-        const timestamp = image.timestamp.toLocaleString('de-DE');
-        galleryHTML += `
-            <div class="gallery-item">
-                <img class="gallery-image" 
-                     src="/data/images/${image.filename}" 
-                     alt="Captured ${timestamp}"
-                     title="${image.filename} - ${timestamp}"
-                     onclick="showImageDetails('${image.filename}')">
-                <div class="image-info">${timestamp}</div>
-            </div>
-        `;
-    });
-    
-    galleryElement.innerHTML = galleryHTML;
-}
+// Automatische Initialisierung
+const cameraController = new CameraController();
 
-function showImageDetails(filename) {
-    const image = cameraState.capturedImages.find(img => img.filename === filename);
-    if (image) {
-        const details = `Datei: ${image.filename}
-Aufgenommen: ${image.timestamp.toLocaleString('de-DE')}
-Größe: ${image.size}`;
-        
-        alert(details);
-    }
-}
+// Für Debugging und externe Zugriffe
+window.cameraController = cameraController;
 
-function downloadImages() {
-    if (cameraState.capturedImages.length === 0) {
-        showNotification('❌ Keine Bilder zum Herunterladen', 'warning');
-        return;
-    }
-    
-    showNotification(`💾 ${cameraState.capturedImages.length} Bilder werden vorbereitet...`, 'info');
-    
-    // Mock-Download
-    setTimeout(() => {
-        showNotification('✅ Bilder-Archiv erstellt', 'success');
-    }, 2000);
-}
-
-function clearImages() {
-    if (cameraState.capturedImages.length === 0) {
-        showNotification('❌ Keine Bilder zum Löschen', 'warning');
-        return;
-    }
-    
-    if (confirm(`Alle ${cameraState.capturedImages.length} Bilder löschen?`)) {
-        cameraState.capturedImages = [];
-        loadImageGallery();
-        showNotification('🗑️ Alle Bilder gelöscht', 'info');
-    }
-}
-
-function startStatsUpdates() {
-    updateCameraStats();
-    setInterval(updateCameraStats, 10000); // Alle 10 Sekunden
-}
-
-// Export für andere Scripts
-window.cameraControl = {
-    captureImage,
-    detectWeeds,
-    toggleStream,
-    continuousDetection,
-    clearResults,
-    loadImageGallery,
-    cameraState
-};
+// Globale Funktionen für Rückwärtskompatibilität (falls nötig)
+window.captureImage = () => cameraController.captureImage();
+window.detectWeeds = () => cameraController.detectWeeds();

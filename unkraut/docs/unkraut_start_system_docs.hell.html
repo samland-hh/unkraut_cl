@@ -5,70 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🌱 Unkraut-2025 System Dokumentation</title>
     <style>
-        /* SAUBERER DARK MODE */
-        html, body {
+        * {
             margin: 0;
             padding: 0;
-            background: #1a1a1a !important;
-            color: #e0e0e0 !important;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            min-height: 100vh;
+            box-sizing: border-box;
         }
         
-        /* ALLE ELEMENTE DUNKEL */
-        * {
-            background-color: transparent !important;
-            color: #e0e0e0 !important;
-            border-color: #444 !important;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
         
         .container {
             max-width: 1200px;
-            margin: 20px auto;
-            padding: 30px;
-            background: #2a2a2a !important;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
         
-        /* ÜBERSCHRIFTEN */
         h1 {
-            color: #4a9eff !important;
-            text-align: center;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             font-size: 2.5em;
             margin-bottom: 30px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            text-align: center;
         }
         
         h2 {
-            color: #66b3ff !important;
-            border-left: 4px solid #4a9eff;
+            color: #2c3e50;
+            border-left: 4px solid #667eea;
             padding-left: 15px;
             margin: 30px 0 15px 0;
             font-size: 1.5em;
         }
         
         h3 {
-            color: #99ccff !important;
+            color: #34495e;
             margin: 20px 0 10px 0;
         }
         
-        /* CODE BLOCKS */
-        .code-block {
-            background: #1e1e1e !important;
-            color: #f0f0f0 !important;
+        .timeline {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
             padding: 20px;
-            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .timeline table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .timeline th,
+        .timeline td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .timeline th {
+            background: rgba(102, 126, 234, 0.1);
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
             margin: 15px 0;
-            border: 1px solid #444;
-            cursor: pointer;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
             position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
         
         .code-block:hover {
-            background: #2a2a2a !important;
-            border-color: #4a9eff;
+            background: #4a5568;
         }
         
         .code-block::before {
@@ -77,91 +101,21 @@
             top: 10px;
             right: 15px;
             font-size: 0.8em;
-            color: #888 !important;
+            opacity: 0.7;
         }
         
         .code-block.copied::before {
             content: "✅ Copied!";
-            color: #4caf50 !important;
+            color: #48bb78;
         }
         
-        pre {
-            margin: 0;
-            white-space: pre-wrap;
-            font-family: 'Courier New', monospace;
-        }
-        
-        /* TABELLEN */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: #2a2a2a !important;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        th {
-            background: #333 !important;
-            color: #e0e0e0 !important;
-            padding: 15px;
-            font-weight: bold;
-            text-align: left;
-        }
-        
-        td {
-            background: #2a2a2a !important;
-            color: #e0e0e0 !important;
-            padding: 12px 15px;
-            border-bottom: 1px solid #444;
-        }
-        
-        tr:hover td {
-            background: #3a3a3a !important;
-        }
-        
-        /* INFO BOXEN */
-        .timeline, .info, .warning, .checklist {
-            background: #2a2a2a !important;
-            border-radius: 8px;
+        .file-tree {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
             padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid #4a9eff;
-        }
-        
-        .warning {
-            border-left-color: #ff9800 !important;
-        }
-        
-        .checklist {
-            border-left-color: #4caf50 !important;
-        }
-        
-        .timeline {
-            border-left-color: #e91e63 !important;
-        }
-        
-        /* KARTEN */
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        
-        .feature {
-            background: #333 !important;
-            border: 1px solid #555;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .feature:hover {
-            background: #3a3a3a !important;
-            border-color: #4a9eff;
-            transform: translateY(-3px);
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
         }
         
         .status-grid {
@@ -172,66 +126,29 @@
         }
         
         .status-card {
-            background: #333 !important;
-            border: 1px solid #555;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             padding: 20px;
+            border-radius: 15px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease;
         }
         
         .status-card:hover {
-            background: #3a3a3a !important;
-            border-color: #4a9eff;
-            transform: translateY(-3px);
+            transform: translateY(-5px);
         }
         
-        /* FILE TREE */
-        .file-tree {
-            background: #1e1e1e !important;
-            border: 1px solid #444;
-            border-radius: 8px;
+        .status-card h3 {
+            color: white;
+            margin-bottom: 10px;
+        }
+        
+        .checklist {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
             padding: 20px;
+            border-radius: 0 10px 10px 0;
             margin: 15px 0;
-            font-family: 'Courier New', monospace;
-        }
-        
-        /* COMMANDS */
-        .command {
-            background: #1e1e1e !important;
-            border: 1px solid #4caf50;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-family: 'Courier New', monospace;
-            display: inline-block;
-            margin: 2px;
-            font-size: 0.9em;
-        }
-        
-        /* LINKS */
-        a {
-            color: #4a9eff !important;
-            text-decoration: none;
-        }
-        
-        a:hover {
-            color: #66b3ff !important;
-            text-decoration: underline;
-        }
-        
-        /* LISTEN */
-        ul {
-            list-style-type: disc;
-            margin-left: 20px;
-        }
-        
-        li::before {
-            color: #4a9eff !important;
-        }
-        
-        .checklist li::before {
-            content: "✅ ";
-            margin-right: 8px;
         }
         
         .checklist ul {
@@ -239,18 +156,96 @@
             margin-left: 0;
         }
         
-        /* RESPONSIVE */
+        .checklist li::before {
+            content: "✅ ";
+            margin-right: 10px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        .command {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .feature {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .feature:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
-                padding: 20px;
+                padding: 15px;
             }
             
             h1 {
                 font-size: 2em;
             }
             
-            .feature-grid, .status-grid {
+            .status-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -491,12 +486,12 @@ curl http://192.168.251.1:5000/health</pre>
         <h2>🔧 Wartung & Debugging</h2>
         
         <h3>Service-Verwaltung:</h3>
-        
+        <div class="code-block" onclick="copyToClipboard(this)">
 <pre># Flask Service steuern
-<div class="code-block" onclick="copyToClipboard(this)">sudo systemctl start flask-unkraut</div>
-<div class="code-block" onclick="copyToClipboard(this)">sudo systemctl stop flask-unkraut</div>
-<div class="code-block" onclick="copyToClipboard(this)">sudo systemctl restart flask-unkraut</div>
-<div class="code-block" onclick="copyToClipboard(this)">sudo systemctl disable flask-unkraut  # Boot-Start deaktivieren</div>
+sudo systemctl start flask-unkraut
+sudo systemctl stop flask-unkraut
+sudo systemctl restart flask-unkraut
+sudo systemctl disable flask-unkraut  # Boot-Start deaktivieren
 
 # Service-Status
 sudo systemctl status flask-unkraut --no-pager -l</pre>
@@ -534,9 +529,8 @@ echo "=== SYSTEM STATUS ===" && \
 date && \
 uptime && \
 sudo systemctl is-active flask-unkraut && \
-tail -1 ~/robo/claude/unkraut/scripts/logs/time_sync.log && \
-echo "Flask Response:" && curl -s http://192.168.251.1:5000/health
-</pre>
+tail -1 scripts/logs/time_sync.log && \
+echo "Flask Response:" && curl -s http://localhost:5000</pre>
         </div>
 
         <h2>🎉 Fazit</h2>
@@ -555,7 +549,7 @@ echo "Flask Response:" && curl -s http://192.168.251.1:5000/health
             <p><strong>Getestet auf:</strong> Raspberry Pi mit Debian/Raspbian, Python 3.x, systemd</p>
         </div>
 
-        <div style="text-align: center; margin-top: 40px; padding: 20px; background: #333 !important; border-radius: 15px; color: #e0e0e0; border: 1px solid #555;">
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white;">
             <h3>🌱 Unkraut-2025 Projekt</h3>
             <p>Robuste Zeit-Synchronisation für alle Szenarien!</p>
         </div>
@@ -563,9 +557,11 @@ echo "Flask Response:" && curl -s http://192.168.251.1:5000/health
 
     <script>
         function copyToClipboard(element) {
+            // Finde das <pre> Element innerhalb des angeklickten code-blocks
             const preElement = element.querySelector('pre');
             const text = preElement ? preElement.textContent : element.textContent;
             
+            // Verwende die moderne Clipboard API
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
                     showCopyFeedback(element);
@@ -574,11 +570,13 @@ echo "Flask Response:" && curl -s http://192.168.251.1:5000/health
                     fallbackCopy(text, element);
                 });
             } else {
+                // Fallback für ältere Browser
                 fallbackCopy(text, element);
             }
         }
 
         function fallbackCopy(text, element) {
+            // Erstelle ein temporäres textarea Element
             const textArea = document.createElement('textarea');
             textArea.value = text;
             textArea.style.position = 'fixed';
@@ -599,11 +597,25 @@ echo "Flask Response:" && curl -s http://192.168.251.1:5000/health
         }
 
         function showCopyFeedback(element) {
+            // Füge "copied" Klasse hinzu für visuelles Feedback
             element.classList.add('copied');
+            
+            // Entferne die Klasse nach 2 Sekunden
             setTimeout(() => {
                 element.classList.remove('copied');
             }, 2000);
         }
+
+        // Optional: Keyboard shortcut für copy (Ctrl+C auf code-blocks)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'c') {
+                const focusedElement = document.activeElement;
+                if (focusedElement && focusedElement.classList.contains('code-block')) {
+                    e.preventDefault();
+                    copyToClipboard(focusedElement);
+                }
+            }
+        });
     </script>
 </body>
 </html>

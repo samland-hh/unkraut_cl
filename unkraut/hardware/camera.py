@@ -18,6 +18,7 @@ class CameraManager:
         self.frame_lock = threading.Lock()
         self.camera_type = 'mock'
         self.libcamera_process = None
+        self._libcamera_working = None  # Cache für libcamera Test-Ergebnis
         self.settings = {
             'brightness': 50,
             'contrast': 50,
@@ -51,7 +52,11 @@ class CameraManager:
         print("⚠️  Fallback zu Mock-Modus")
     
     def _test_libcamera_working(self):
-        """Teste ob libcamera tatsächlich funktioniert"""
+        """Teste ob libcamera tatsächlich funktioniert - mit Caching"""
+        # Cache verwenden wenn bereits getestet
+        if self._libcamera_working is not None:
+            return self._libcamera_working
+            
         try:
             print("🧪 Teste libcamera-hello...")
             
@@ -80,20 +85,25 @@ class CameraManager:
                     test_process.wait(timeout=2)
                     
                     print("✅ libcamera-vid auch funktionsfähig!")
+                    self._libcamera_working = True  # Cache speichern
                     return True
                     
                 except Exception as e:
                     print(f"⚠️  libcamera-vid Test unvollständig: {e}")
-                    return True  # libcamera-hello hat funktioniert, das reicht
+                    self._libcamera_working = True  # libcamera-hello hat funktioniert, das reicht
+                    return True
             else:
                 print(f"❌ libcamera-hello Fehler: {result.stderr}")
+                self._libcamera_working = False
                 return False
                 
         except subprocess.TimeoutExpired:
             print("⚠️  libcamera-hello Timeout - möglicherweise trotzdem OK")
-            return True  # Timeout kann OK sein
+            self._libcamera_working = True  # Timeout kann OK sein
+            return True
         except Exception as e:
             print(f"❌ libcamera Test Fehler: {e}")
+            self._libcamera_working = False
             return False
     
     def _find_usb_camera(self):
@@ -138,179 +148,147 @@ class CameraManager:
     def _libcamera_worker(self):
         """libcamera Worker - robuste Version"""
         try:
-            # libcamera-vid Befehl für MJPEG Stream
+            # Verwende raspistill-ähnlichen Ansatz mit mjpeg
             cmd = [
                 'libcamera-vid',
-                '--timeout', '0',  # Endlos laufen
-                '--nopreview',     # Kein GUI Preview
+                '--timeout', '0',  # Endlos
+                '--nopreview',
+                '--codec', 'mjpeg',
                 '--width', str(self.settings['resolution'][0]),
                 '--height', str(self.settings['resolution'][1]),
                 '--framerate', str(self.settings['framerate']),
-                '--codec', 'mjpeg',
-                '--inline',
                 '--output', '-'  # Stdout
             ]
-            
-            print(f"🚀 Starte: {' '.join(cmd)}")
             
             self.libcamera_process = subprocess.Popen(
                 cmd, 
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                bufsize=0
+                stderr=subprocess.DEVNULL,
+                bufsize=10**5
             )
             
-            buffer = b''
-            jpeg_start = b'\xff\xd8'
-            jpeg_end = b'\xff\xd9'
-            
-            print("📡 libcamera MJPEG Stream läuft...")
-            
+            # MJPEG Stream parsen
+            buffer = b""
             while self.is_streaming and self.libcamera_process.poll() is None:
-                try:
-                    # Daten lesen
-                    chunk = self.libcamera_process.stdout.read(8192)
-                    if not chunk:
-                        print("⚠️  Keine Daten von libcamera")
-                        break
-                    
-                    buffer += chunk
-                    
-                    # JPEG Frames extrahieren
-                    while True:
-                        start_pos = buffer.find(jpeg_start)
-                        if start_pos == -1:
-                            break
-                            
-                        end_pos = buffer.find(jpeg_end, start_pos)
-                        if end_pos == -1:
-                            break
-                        
-                        # Komplettes JPEG Frame
-                        end_pos += 2
-                        jpeg_data = buffer[start_pos:end_pos]
-                        buffer = buffer[end_pos:]
-                        
-                        # JPEG zu OpenCV Frame
-                        nparr = np.frombuffer(jpeg_data, np.uint8)
-                        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                        
-                        if frame is not None:
-                            with self.frame_lock:
-                                self.current_frame = frame
-                            #print(f"📸 Frame: {frame.shape}")
-                        else:
-                            print("⚠️  Frame dekodierung fehlgeschlagen")
-                
-                except Exception as e:
-                    print(f"❌ libcamera Worker Fehler: {e}")
+                chunk = self.libcamera_process.stdout.read(4096)
+                if not chunk:
                     break
-            
-            # Cleanup
-            if self.libcamera_process and self.libcamera_process.poll() is None:
-                print("🛑 Stoppe libcamera-vid...")
-                self.libcamera_process.terminate()
-                try:
-                    self.libcamera_process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    print("⚠️  Force kill libcamera-vid")
-                    self.libcamera_process.kill()
-            
-            print("📹 libcamera Worker beendet")
-            
+                    
+                buffer += chunk
+                
+                # JPEG Marker finden
+                while True:
+                    start = buffer.find(b'\xff\xd8')  # JPEG Start
+                    if start == -1:
+                        break
+                        
+                    end = buffer.find(b'\xff\xd9', start + 2)  # JPEG End
+                    if end == -1:
+                        break
+                        
+                    # Komplettes JPEG Frame
+                    jpeg_data = buffer[start:end + 2]
+                    
+                    with self.frame_lock:
+                        self.current_frame = jpeg_data
+                    
+                    buffer = buffer[end + 2:]
+                    
         except Exception as e:
-            print(f"❌ libcamera Worker kritischer Fehler: {e}")
+            print(f"❌ libcamera Worker Fehler: {e}")
         finally:
-            # Fallback zu Mock falls Stream stoppt
-            if self.is_streaming:
-                print("🎭 Wechsle zu Mock wegen libcamera Problemen")
-                self._start_mock_stream()
+            if self.libcamera_process:
+                self.libcamera_process.terminate()
+                self.libcamera_process = None
     
     def _start_usb_stream(self):
         """USB Kamera Stream"""
         try:
             self.camera = cv2.VideoCapture(self.camera_device)
-            if not self.camera.isOpened():
-                return self._start_mock_stream()
-            
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings['resolution'][0])
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings['resolution'][1])
             self.camera.set(cv2.CAP_PROP_FPS, self.settings['framerate'])
             
-            self.is_streaming = True
-            threading.Thread(target=self._usb_worker, daemon=True).start()
-            return True
+            if self.camera.isOpened():
+                self.is_streaming = True
+                threading.Thread(target=self._usb_worker, daemon=True).start()
+                print("✅ USB Stream gestartet")
+                return True
         except Exception as e:
             print(f"❌ USB Stream Fehler: {e}")
-            return self._start_mock_stream()
+        
+        return self._start_mock_stream()
     
     def _usb_worker(self):
-        """USB Worker"""
-        while self.is_streaming and self.camera:
+        """USB Kamera Worker"""
+        while self.is_streaming and self.camera and self.camera.isOpened():
             try:
                 ret, frame = self.camera.read()
-                if ret:
+                if ret and frame is not None:
+                    # Frame zu JPEG
+                    _, jpeg_data = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    
                     with self.frame_lock:
-                        self.current_frame = frame
-                time.sleep(1/self.settings['framerate'])
+                        self.current_frame = jpeg_data.tobytes()
+                else:
+                    time.sleep(0.1)
+                    
             except Exception as e:
                 print(f"❌ USB Worker Fehler: {e}")
                 break
     
     def _start_mock_stream(self):
-        """Mock Stream Fallback"""
-        self.camera_type = 'mock'
-        self.is_streaming = True
-        threading.Thread(target=self._mock_worker, daemon=True).start()
-        print("🎭 Mock-Stream gestartet")
-        return True
+        """Mock Stream für Tests"""
+        try:
+            self.is_streaming = True
+            threading.Thread(target=self._mock_worker, daemon=True).start()
+            print("✅ Mock Stream gestartet")
+            return True
+        except Exception as e:
+            print(f"❌ Mock Stream Fehler: {e}")
+            return False
     
     def _mock_worker(self):
-        """Mock Worker"""
+        """Mock Kamera Worker"""
         frame_count = 0
         while self.is_streaming:
             try:
-                # Schönes Mock-Bild mit Garden-Theme
-                img = np.zeros((self.settings['resolution'][1], self.settings['resolution'][0], 3), dtype=np.uint8)
+                # Dynamischer Mock-Frame
+                frame = np.zeros((480, 640, 3), dtype=np.uint8)
                 
-                # Grüner Garten-Hintergrund
-                img[:, :] = (0, 80, 0)
+                # Beweglicher Kreis
+                center_x = int(320 + 200 * np.sin(frame_count * 0.1))
+                center_y = int(240 + 100 * np.cos(frame_count * 0.15))
+                cv2.circle(frame, (center_x, center_y), 30, (0, 255, 0), -1)
                 
-                # Simulierte "Pflanzen"
-                for i in range(5):
-                    x = 80 + i * 120
-                    y = 300 + int(20 * np.sin(frame_count * 0.1 + i))
-                    cv2.circle(img, (x, y), 25, (0, 150, 0), -1)
-                    cv2.circle(img, (x, y-15), 15, (0, 200, 0), -1)
+                # Text overlay
+                cv2.putText(frame, f"Mock Camera - Frame {frame_count}", 
+                           (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(frame, f"Time: {time.strftime('%H:%M:%S')}", 
+                           (10, 460), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
                 
-                # Status-Info
-                status_text = [
-                    "🤖 Unkraut-2025 - Pi Kamera",
-                    f"Modus: {self.camera_type.upper()}",
-                    f"Zeit: {time.strftime('%H:%M:%S')}",
-                    f"Frame: {frame_count}",
-                    "libcamera-hello/still/vid funktioniert! ✅"
-                ]
+                # Simuliere Unkraut-Spots
+                if frame_count % 60 < 30:  # Alle 2s für 1s
+                    cv2.circle(frame, (450, 150), 15, (0, 0, 255), -1)
+                    cv2.putText(frame, "WEED", (430, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 
-                for i, text in enumerate(status_text):
-                    y_pos = 30 + i * 25
-                    cv2.putText(img, text, (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                # Frame zu JPEG
+                _, jpeg_data = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
                 
                 with self.frame_lock:
-                    self.current_frame = img
+                    self.current_frame = jpeg_data.tobytes()
                 
                 frame_count += 1
-                time.sleep(1/self.settings['framerate'])
+                time.sleep(1.0 / self.settings['framerate'])
                 
             except Exception as e:
                 print(f"❌ Mock Worker Fehler: {e}")
-                time.sleep(1)
+                break
     
     def stop_stream(self):
         """Stream stoppen"""
         self.is_streaming = False
         
-        # libcamera Prozess stoppen
         if self.libcamera_process:
             try:
                 self.libcamera_process.terminate()
@@ -322,7 +300,6 @@ class CameraManager:
                     pass
             self.libcamera_process = None
         
-        # USB Kamera stoppen
         if self.camera:
             try:
                 self.camera.release()
@@ -330,94 +307,114 @@ class CameraManager:
                 pass
             self.camera = None
         
-        print("📹 Stream gestoppt")
+        print("🛑 Kamera-Stream gestoppt")
     
     def get_frame(self):
-        """Aktuelles Frame als JPEG"""
+        """Aktuelles Frame holen"""
         with self.frame_lock:
-            if self.current_frame is not None:
-                try:
-                    ret, buffer = cv2.imencode('.jpg', self.current_frame, 
-                                             [cv2.IMWRITE_JPEG_QUALITY, 80])
-                    if ret:
-                        return buffer.tobytes()
-                except Exception as e:
-                    print(f"❌ Frame Encoding: {e}")
-        
-        # Fallback
-        return self._create_error_frame()
+            if self.current_frame:
+                # bytes-Objekte haben keine copy() Methode - einfach zurückgeben
+                return self.current_frame
+            return None
     
-    def _create_error_frame(self):
-        """Fehler-Frame"""
-        img = np.zeros((480, 640, 3), dtype=np.uint8)
-        img[:] = (0, 0, 100)
-        cv2.putText(img, 'KAMERA FEHLER', (200, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        ret, buffer = cv2.imencode('.jpg', img)
-        return buffer.tobytes() if ret else b''
-    
-    def capture_image(self, filename=None, high_resolution=False):
-        """
-        Foto aufnehmen - mit Option für hochaufgelöste Fotos
-        high_resolution=True: Stoppt Stream für libcamera-still (1920x1080)
-        high_resolution=False: Nutzt Stream-Frame (640x480)
-        """
-        if filename is None:
-            filename = f"capture_{int(time.time())}.jpg"
+    def capture_image(self, filename=None):
+        """Foto aufnehmen - startet Stream automatisch falls nötig"""
+        # Stream automatisch starten falls nicht aktiv
+        if not self.is_streaming:
+            print("📹 Starte Stream für Capture...")
+            success = self.start_stream()
+            if not success:
+                print("❌ Stream-Start fehlgeschlagen - verwende libcamera-still")
+                return self._capture_with_libcamera_still(filename)
+            
+            # Kurz warten bis Frames verfügbar sind
+            for i in range(10):  # Max 5 Sekunden warten
+                time.sleep(0.5)
+                if self.current_frame is not None:
+                    break
+            else:
+                print("⚠️  Keine Frames nach 5s - verwende libcamera-still")
+                return self._capture_with_libcamera_still(filename)
         
-        filepath = f"data/images/{filename}"
-        os.makedirs("data/images", exist_ok=True)
-        
-        # Hochauflösendes Foto (stoppt Stream temporär)
-        if high_resolution and self.camera_type == 'libcamera':
-            print("📸 Stoppe Stream für hochaufgelöstes Foto...")
-            
-            # Stream temporär stoppen
-            was_streaming = self.is_streaming
-            if was_streaming:
-                self.stop_stream()
-                time.sleep(1)  # Warten bis libcamera-vid wirklich beendet ist
-            
-            try:
-                result = subprocess.run([
-                    'libcamera-still',
-                    '-o', filepath,
-                    '--timeout', '2000',
-                    '--width', '1920',
-                    '--height', '1080',
-                    '--nopreview'
-                ], capture_output=True, timeout=15)
-                
-                if result.returncode == 0 and os.path.exists(filepath):
-                    print(f"📸 Hochauflösendes Foto (1920x1080): {filepath}")
-                    
-                    # Stream wieder starten falls er lief
-                    if was_streaming:
-                        print("🔄 Starte Stream wieder...")
-                        self.start_stream()
-                    
-                    return filename
-                else:
-                    print(f"❌ libcamera-still Fehler: {result.stderr.decode()}")
-            
-            except Exception as e:
-                print(f"❌ Hochauflösendes Foto Fehler: {e}")
-            
-            # Stream wieder starten bei Fehler
-            if was_streaming:
-                self.start_stream()
-        
-        # Standard: Stream-Frame verwenden (kein Konflikt)
+        # Stream-Frame verwenden
         frame_data = self.get_frame()
         if frame_data and len(frame_data) > 1000:
             try:
+                if not filename:
+                    # Neues Datumsformat: capture_YY.MM.DD_hh.mm_ss.jpg
+                    from datetime import datetime
+                    now = datetime.now()
+                    filename = f"capture_{now.strftime('%y.%m.%d_%H.%M_%S')}.jpg"
+                
+                filepath = os.path.join("data/images", filename)
+                os.makedirs("data/images", exist_ok=True)
+                
                 with open(filepath, 'wb') as f:
                     f.write(frame_data)
-                print(f"📸 Stream-Frame gespeichert (640x480): {filepath}")
+                
+                print(f"📸 Foto gespeichert (640x480): {filepath}")
                 return filename
             except Exception as e:
                 print(f"❌ Stream-Foto Fehler: {e}")
         
-        return None
+        # Fallback: libcamera-still
+        print("⚠️  Stream-Frame nicht verfügbar - verwende libcamera-still")
+        return self._capture_with_libcamera_still(filename)
+    
+    def _capture_with_libcamera_still(self, filename=None):
+        """Fallback: Direkte Aufnahme mit libcamera-still"""
+        if self.camera_type != 'libcamera':
+            print("❌ libcamera-still nur mit libcamera verfügbar")
+            return None
+        
+        try:
+            if not filename:
+                # Neues Datumsformat: capture_YY.MM.DD_hh.mm_ss.jpg
+                from datetime import datetime
+                now = datetime.now()
+                filename = f"capture_{now.strftime('%y.%m.%d_%H.%M_%S')}.jpg"
+            
+            filepath = os.path.join("data/images", filename)
+            os.makedirs("data/images", exist_ok=True)
+            
+            print("📸 Verwende libcamera-still für Direktaufnahme...")
+            
+            # Stream temporär stoppen um Konflikt zu vermeiden
+            was_streaming = self.is_streaming
+            if was_streaming:
+                print("🛑 Stoppe Stream temporär...")
+                self.stop_stream()
+                time.sleep(1)
+            
+            # libcamera-still ausführen
+            result = subprocess.run([
+                'libcamera-still',
+                '-o', filepath,
+                '--timeout', '2000',
+                '--width', '1920',
+                '--height', '1080',
+                '--nopreview'
+            ], capture_output=True, timeout=15)
+            
+            # Stream wieder starten falls er lief
+            if was_streaming:
+                print("🔄 Starte Stream wieder...")
+                self.start_stream()
+            
+            if result.returncode == 0 and os.path.exists(filepath):
+                size = os.path.getsize(filepath)
+                print(f"✅ libcamera-still Foto (1920x1080): {filepath} ({size} bytes)")
+                return filename
+            else:
+                print(f"❌ libcamera-still Fehler: {result.stderr.decode()}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ libcamera-still Exception: {e}")
+            # Stream wieder starten bei Fehler
+            if was_streaming and not self.is_streaming:
+                self.start_stream()
+            return None
         
     def adjust_setting(self, setting, value):
         """Einstellungen anpassen"""
@@ -428,13 +425,13 @@ class CameraManager:
         return False
     
     def get_camera_info(self):
-        """Kamera-Info"""
+        """Kamera-Info - ohne ständigen libcamera-Test"""
         return {
             'type': self.camera_type,
             'is_streaming': self.is_streaming,
             'settings': self.settings.copy(),
             'frame_available': self.current_frame is not None,
-            'libcamera_working': self._test_libcamera_working()
+            'libcamera_working': self._libcamera_working if self._libcamera_working is not None else False
         }
     
     def restart_stream(self):
