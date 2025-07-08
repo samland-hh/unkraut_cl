@@ -1,460 +1,563 @@
-// app/static/js/camera.js - Saubere HTML/CSS/JS Trennung
+// app/static/js/camera.js
 /**
- * Kamera-Steuerung für Unkraut-2025
- * Bindet sich automatisch an DOM-Elemente über data-Attribute
+ * Unkraut-2025 Kamera-Steuerung mit korrigierten API-Endpoints
+ * Repariert die 404-Fehler bei Gallery und Stats
  */
 
 class CameraController {
     constructor() {
-        this.state = {
-            isStreaming: true,
-            continuousDetection: false,
-            detectionInterval: null,
-            currentSettings: {
-                resolution: '640x480',
-                quality: 80,
-                fps: 30
-            }
+        this.isCapturing = false;
+        this.isDetecting = false;
+        this.isStreaming = false;
+        this.autoRefreshInterval = null;
+        this.cameraSettings = {
+            resolution: '640x480',
+            quality: 85,
+            awb_mode: 'auto',
+            shutter_speed: 'auto'
         };
         
-        // Automatische Initialisierung
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.init());
-        } else {
-            this.init();
-        }
+        console.log('📷 Camera Controller initialisiert');
+        this.init();
     }
     
     init() {
-        console.log('📷 Initialisiere Kamera-Controller...');
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
+        } else {
+            this.setupEventListeners();
+        }
         
-        // Event-Listener binden
-        this.bindEventListeners();
-        
-        // Kamera-Stream Setup
-        this.setupCameraStream();
-        
-        // Einstellungen laden
-        this.loadSettings();
-        
-        // Statistiken starten
-        this.startStatsUpdates();
-        
-        console.log('✅ Kamera-Controller bereit');
+        // Initial laden
+        this.updateStatus();
+        this.loadGallery();
+        this.startAutoRefresh();
     }
     
-    bindEventListeners() {
-        // Kamera-Aktionen
-        document.querySelectorAll('[data-camera-action]').forEach(btn => {
-            const action = btn.dataset.cameraAction;
-            btn.addEventListener('click', (e) => this.handleCameraAction(action, e));
-        });
+    setupEventListeners() {
+        // Capture Button
+        const captureBtn = document.getElementById('capture-btn') || 
+                          document.querySelector('[data-action="capture"]') ||
+                          document.querySelector('.btn[onclick*="capture"]');
         
-        // AI-Aktionen
-        document.querySelectorAll('[data-ai-action]').forEach(btn => {
-            const action = btn.dataset.aiAction;
-            btn.addEventListener('click', (e) => this.handleAIAction(action, e));
-        });
+        if (captureBtn) {
+            captureBtn.removeAttribute('onclick'); // Entferne alte onclick
+            captureBtn.addEventListener('click', () => this.captureImage());
+            console.log('📸 Capture Button verbunden');
+        }
         
-        // Statistik-Aktionen
-        document.querySelectorAll('[data-stats-action]').forEach(btn => {
-            const action = btn.dataset.statsAction;
-            btn.addEventListener('click', (e) => this.handleStatsAction(action, e));
-        });
+        // Detection Button
+        const detectBtn = document.getElementById('detect-btn') || 
+                         document.querySelector('[data-action="detect"]');
         
-        // Einstellungen
-        document.querySelectorAll('[data-setting]').forEach(element => {
-            const setting = element.dataset.setting;
-            element.addEventListener('change', (e) => this.handleSettingChange(setting, e));
-            element.addEventListener('input', (e) => this.handleSettingInput(setting, e));
-        });
+        if (detectBtn) {
+            detectBtn.addEventListener('click', () => this.runDetection());
+            console.log('🔍 Detection Button verbunden');
+        }
         
-        console.log('📎 Event-Listener gebunden');
+        // Gallery Buttons
+        this.bindGalleryButtons();
+        
+        // Settings
+        this.bindSettingsControls();
+        
+        console.log('✅ Event Listeners verbunden');
     }
     
-    setupCameraStream() {
-        const streamImg = document.getElementById('camera-stream');
-        if (streamImg) {
-            streamImg.addEventListener('load', () => {
-                this.state.isStreaming = true;
-                console.log('📹 Kamera-Stream aktiv');
+    bindGalleryButtons() {
+        // Load Gallery Button
+        const loadBtn = document.querySelector('[data-gallery-action="load"]') ||
+                       document.querySelector('.btn[onclick*="loadGallery"]');
+        if (loadBtn) {
+            loadBtn.removeAttribute('onclick');
+            loadBtn.addEventListener('click', () => this.loadGallery());
+        }
+        
+        // Download Button
+        const downloadBtn = document.querySelector('[data-gallery-action="download"]') ||
+                           document.querySelector('.btn[onclick*="downloadImages"]');
+        if (downloadBtn) {
+            downloadBtn.removeAttribute('onclick');
+            downloadBtn.addEventListener('click', () => this.downloadImages());
+        }
+        
+        // Clear Button
+        const clearBtn = document.querySelector('[data-gallery-action="clear"]') ||
+                        document.querySelector('.btn[onclick*="clearImages"]');
+        if (clearBtn) {
+            clearBtn.removeAttribute('onclick');
+            clearBtn.addEventListener('click', () => this.clearGallery());
+        }
+    }
+    
+    bindSettingsControls() {
+        const settingsControls = document.querySelectorAll('[data-setting]');
+        settingsControls.forEach(control => {
+            const setting = control.dataset.setting;
+            control.addEventListener('change', (e) => {
+                this.cameraSettings[setting] = e.target.value;
+                console.log(`⚙️ Setting changed: ${setting} = ${e.target.value}`);
             });
-            
-            streamImg.addEventListener('error', () => {
-                console.warn('❌ Kamera-Stream Fehler');
-                this.state.isStreaming = false;
-            });
-        }
-    }
-    
-    loadSettings() {
-        // Einstellungen aus localStorage laden (falls vorhanden)
-        const savedSettings = localStorage.getItem('cameraSettings');
-        if (savedSettings) {
-            try {
-                this.state.currentSettings = {...this.state.currentSettings, ...JSON.parse(savedSettings)};
-                this.applySettings();
-            } catch (e) {
-                console.warn('Gespeicherte Einstellungen konnten nicht geladen werden');
-            }
-        }
-    }
-    
-    applySettings() {
-        // Einstellungen in UI anwenden
-        const resolutionSelect = document.getElementById('resolution-select');
-        if (resolutionSelect) {
-            resolutionSelect.value = this.state.currentSettings.resolution;
-        }
-        
-        const qualitySlider = document.getElementById('quality-slider');
-        const qualityDisplay = document.getElementById('quality-display');
-        if (qualitySlider && qualityDisplay) {
-            qualitySlider.value = this.state.currentSettings.quality;
-            qualityDisplay.textContent = this.state.currentSettings.quality;
-        }
-        
-        const fpsSlider = document.getElementById('fps-slider');
-        const fpsDisplay = document.getElementById('fps-display');
-        if (fpsSlider && fpsDisplay) {
-            fpsSlider.value = this.state.currentSettings.fps;
-            fpsDisplay.textContent = this.state.currentSettings.fps;
-        }
-    }
-    
-    saveSettings() {
-        localStorage.setItem('cameraSettings', JSON.stringify(this.state.currentSettings));
-    }
-    
-    async handleCameraAction(action, event) {
-        const button = event.target;
-        this.setButtonLoading(button, true);
-        
-        try {
-            switch(action) {
-                case 'capture':
-                    await this.captureImage();
-                    break;
-                case 'detect':
-                    await this.detectWeeds();
-                    break;
-                case 'toggle-stream':
-                    this.toggleStream();
-                    break;
-                default:
-                    console.warn(`Unbekannte Kamera-Aktion: ${action}`);
-            }
-        } catch (error) {
-            console.error(`Fehler bei Kamera-Aktion ${action}:`, error);
-            this.showNotification(`❌ Fehler: ${error.message}`, 'error');
-        } finally {
-            this.setButtonLoading(button, false);
-        }
-    }
-    
-    async handleAIAction(action, event) {
-        const button = event.target;
-        this.setButtonLoading(button, true);
-        
-        try {
-            switch(action) {
-                case 'detect':
-                    await this.detectWeeds();
-                    break;
-                case 'continuous':
-                    this.toggleContinuousDetection();
-                    break;
-                case 'clear':
-                    this.clearDetectionResults();
-                    break;
-                default:
-                    console.warn(`Unbekannte AI-Aktion: ${action}`);
-            }
-        } catch (error) {
-            console.error(`Fehler bei AI-Aktion ${action}:`, error);
-            this.showNotification(`❌ Fehler: ${error.message}`, 'error');
-        } finally {
-            this.setButtonLoading(button, false);
-        }
-    }
-    
-    async handleStatsAction(action, event) {
-        const button = event.target;
-        this.setButtonLoading(button, true);
-        
-        try {
-            switch(action) {
-                case 'update':
-                    await this.updateCameraStats();
-                    break;
-                default:
-                    console.warn(`Unbekannte Stats-Aktion: ${action}`);
-            }
-        } catch (error) {
-            console.error(`Fehler bei Stats-Aktion ${action}:`, error);
-        } finally {
-            this.setButtonLoading(button, false);
-        }
-    }
-    
-    handleSettingChange(setting, event) {
-        const value = event.target.value;
-        this.state.currentSettings[setting] = value;
-        this.saveSettings();
-        console.log(`⚙️ Einstellung geändert: ${setting} = ${value}`);
-    }
-    
-    handleSettingInput(setting, event) {
-        const value = event.target.value;
-        this.state.currentSettings[setting] = parseInt(value) || value;
-        
-        // Display-Updates für Slider
-        if (setting === 'quality') {
-            const display = document.getElementById('quality-display');
-            if (display) display.textContent = value;
-        } else if (setting === 'fps') {
-            const display = document.getElementById('fps-display');
-            if (display) display.textContent = value;
-        }
+        });
     }
     
     async captureImage() {
+        if (this.isCapturing) {
+            console.log('⏳ Capture läuft bereits...');
+            return;
+        }
+        
+        this.isCapturing = true;
+        this.updateCaptureButton('🔄 Aufnehmen...');
+        
         try {
-            this.showNotification('📸 Nehme Foto auf...', 'info');
+            console.log('📸 Starte Capture...');
             
             const response = await fetch('/api/camera/capture', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.cameraSettings)
             });
             
             const result = await response.json();
             
-            if (result.filename) {
-                this.showNotification(`📸 Foto gespeichert: ${result.filename}`, 'success');
+            if (response.ok) {
+                console.log('✅ Capture erfolgreich:', result);
+                this.showNotification(`✅ Foto gespeichert: ${result.filename}`, 'success');
                 
-                // Event für andere Module (z.B. Galerie)
-                document.dispatchEvent(new CustomEvent('imageCapture', {
-                    detail: { filename: result.filename }
+                // Galerie nach kurzer Pause aktualisieren
+                setTimeout(() => this.loadGallery(), 1500);
+                
+                // Custom Event für andere Scripts
+                document.dispatchEvent(new CustomEvent('imageCapture', { 
+                    detail: result 
                 }));
                 
-                return result;
             } else {
                 throw new Error(result.error || 'Capture fehlgeschlagen');
             }
             
         } catch (error) {
-            console.error('Capture-Fehler:', error);
-            this.showNotification(`❌ Foto-Aufnahme fehlgeschlagen: ${error.message}`, 'error');
-            throw error;
+            console.error('❌ Capture-Fehler:', error);
+            this.showNotification(`❌ Capture fehlgeschlagen: ${error.message}`, 'error');
+        } finally {
+            this.isCapturing = false;
+            this.updateCaptureButton('📸 Foto aufnehmen');
         }
     }
     
-    async detectWeeds() {
+    async runDetection() {
+        if (this.isDetecting) {
+            console.log('⏳ Detection läuft bereits...');
+            return;
+        }
+        
+        this.isDetecting = true;
+        this.updateDetectionButton('🔄 Analysiere...');
+        this.updateDetectionResults('🔍 Starte Unkraut-Erkennung...\n⏳ Bitte warten...');
+        
         try {
-            this.showNotification('🔄 Analysiere Kamerabild...', 'info');
+            console.log('🔍 Starte Unkraut-Erkennung...');
             
             const response = await fetch('/api/ai/detect', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.cameraSettings)
             });
             
             const result = await response.json();
             
-            if (result.detections) {
-                const count = result.detections.length;
-                const confidence = (result.confidence * 100).toFixed(1);
-                
-                this.showNotification(`🔍 ${count} Unkraut erkannt (${confidence}% Konfidenz)`, 'success');
+            if (response.ok) {
+                console.log('✅ Detection erfolgreich:', result);
                 this.displayDetectionResults(result);
-                
-                return result;
+                this.showNotification(`✅ ${result.detections?.length || 0} Unkräuter erkannt`, 'success');
             } else {
-                throw new Error(result.error || 'Erkennung fehlgeschlagen');
+                throw new Error(result.error || 'Detection fehlgeschlagen');
             }
             
         } catch (error) {
-            console.error('Detection-Fehler:', error);
-            this.showNotification(`❌ Unkraut-Erkennung fehlgeschlagen: ${error.message}`, 'error');
-            this.displayDetectionError(error.message);
-            throw error;
+            console.error('❌ Detection-Fehler:', error);
+            this.updateDetectionResults(`❌ Fehler bei der Unkraut-Erkennung:\n${error.message}`);
+            this.showNotification(`❌ Detection fehlgeschlagen: ${error.message}`, 'error');
+        } finally {
+            this.isDetecting = false;
+            this.updateDetectionButton('🔍 Unkraut erkennen');
         }
+    }
+    
+    async loadGallery() {
+        try {
+            console.log('📸 Lade Bildergalerie...');
+            
+            // ✅ KORRIGIERTER ENDPOINT
+            const response = await fetch('/api/gallery/images');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log(`📊 Galerie geladen: ${data.count} Bilder`);
+            
+            this.renderGallery(data.images || []);
+            
+        } catch (error) {
+            console.error('❌ Gallery-Load-Fehler:', error);
+            this.renderGalleryError(error.message);
+        }
+    }
+    
+    renderGallery(images) {
+        const container = document.getElementById('image-gallery') || 
+                         document.querySelector('.image-gallery');
+        
+        if (!container) {
+            console.warn('❌ Gallery-Container nicht gefunden');
+            return;
+        }
+        
+        if (images.length === 0) {
+            container.innerHTML = `
+                <div class="gallery-empty">
+                    <p>📭 Noch keine Bilder aufgenommen</p>
+                    <p>Nutze den "📸 Foto aufnehmen" Button</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="gallery-header">
+                <p><strong>${images.length} Bilder</strong></p>
+            </div>
+            <div class="gallery-grid">
+        `;
+        
+        images.forEach(image => {
+            html += `
+                <div class="gallery-item" data-filename="${image.filename}">
+                    <img src="/api/gallery/image/${image.filename}" 
+                         class="gallery-image" 
+                         alt="${image.filename}"
+                         loading="lazy"
+                         onclick="cameraController.showImageModal('${image.filename}')"
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+4p2MPC90ZXh0Pjwvc3ZnPg=='">
+                    <div class="image-info">
+                        <div class="image-name">${image.filename}</div>
+                        <div class="image-size">${this.formatFileSize(image.size)}</div>
+                        <button class="btn-small btn-danger" 
+                                onclick="cameraController.deleteImage('${image.filename}')">
+                            🗑️ Löschen
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        console.log(`✅ Galerie gerendert: ${images.length} Bilder`);
+    }
+    
+    renderGalleryError(errorMessage) {
+        const container = document.getElementById('image-gallery') || 
+                         document.querySelector('.image-gallery');
+        
+        if (container) {
+            container.innerHTML = `
+                <div class="gallery-error">
+                    <p>❌ Fehler beim Laden der Galerie</p>
+                    <p><small>${errorMessage}</small></p>
+                    <button class="btn btn-info" onclick="cameraController.loadGallery()">
+                        🔄 Erneut versuchen
+                    </button>
+                </div>
+            `;
+        }
+    }
+    
+    async deleteImage(filename) {
+        if (!confirm(`🗑️ Bild "${filename}" wirklich löschen?`)) {
+            return;
+        }
+        
+        try {
+            console.log(`🗑️ Lösche Bild: ${filename}`);
+            
+            const response = await fetch(`/api/gallery/delete/${filename}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                console.log(`✅ Bild gelöscht: ${filename}`);
+                this.showNotification(`✅ Bild "${filename}" gelöscht`, 'success');
+                this.loadGallery(); // Galerie neu laden
+            } else {
+                throw new Error(`Löschen fehlgeschlagen: ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Delete-Fehler:', error);
+            this.showNotification(`❌ Löschen fehlgeschlagen: ${error.message}`, 'error');
+        }
+    }
+    
+    async downloadImages() {
+        try {
+            console.log('💾 Starte Download...');
+            
+            const response = await fetch('/api/gallery/download', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `unkraut_bilder_${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                this.showNotification('✅ Download gestartet!', 'success');
+            } else {
+                throw new Error(`Download fehlgeschlagen: ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Download-Fehler:', error);
+            this.showNotification(`❌ Download fehlgeschlagen: ${error.message}`, 'error');
+        }
+    }
+    
+    async clearGallery() {
+        if (!confirm('🗑️ ALLE Bilder löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden!')) {
+            return;
+        }
+        
+        try {
+            console.log('🗑️ Lösche alle Bilder...');
+            
+            const response = await fetch('/api/gallery/clear', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Galerie geleert:', result);
+                this.showNotification(`✅ ${result.deleted} Bilder gelöscht`, 'success');
+                this.loadGallery(); // Galerie neu laden
+            } else {
+                throw new Error(`Löschen fehlgeschlagen: ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Clear-Fehler:', error);
+            this.showNotification(`❌ Löschen fehlgeschlagen: ${error.message}`, 'error');
+        }
+    }
+    
+    async updateStatus() {
+        try {
+            // ✅ KORRIGIERTER ENDPOINT  
+            const response = await fetch('/api/system/status');
+            
+            if (response.ok) {
+                const status = await response.json();
+                this.displayStatus(status);
+            } else {
+                throw new Error(`Status-API Fehler: ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Status-Update-Fehler:', error);
+            this.displayStatus({
+                error: error.message,
+                timestamp: Date.now(),
+                system: { error: 'Status nicht verfügbar' }
+            });
+        }
+    }
+    
+    displayStatus(status) {
+        const statusElement = document.getElementById('camera-status') || 
+                             document.querySelector('.status-display');
+        
+        if (!statusElement) return;
+        
+        if (status.error) {
+            statusElement.textContent = `❌ Status-Fehler: ${status.error}`;
+            return;
+        }
+        
+        const systemInfo = status.system || {};
+        const hardwareInfo = status.hardware || {};
+        
+        let statusText = `📷 Kamera-Status (${new Date(status.timestamp * 1000).toLocaleTimeString()})\n\n`;
+        
+        // System-Info
+        if (systemInfo.cpu_usage !== undefined) {
+            statusText += `💻 CPU: ${systemInfo.cpu_usage.toFixed(1)}%\n`;
+        }
+        if (systemInfo.memory_usage !== undefined) {
+            statusText += `🧠 RAM: ${systemInfo.memory_usage.toFixed(1)}%\n`;
+        }
+        if (systemInfo.temperature !== undefined) {
+            statusText += `🌡️ Temp: ${systemInfo.temperature.toFixed(1)}°C\n`;
+        }
+        
+        // Hardware-Info
+        statusText += `\n📷 Kamera: ${hardwareInfo.camera_available ? '✅ Verfügbar' : '❌ Nicht verfügbar'}\n`;
+        statusText += `🦾 Roboterarm: ${hardwareInfo.arm_available ? '✅ Verfügbar' : '❌ Nicht verfügbar'}\n`;
+        statusText += `🧠 KI: ${hardwareInfo.ai_available ? '✅ Verfügbar' : '❌ Nicht verfügbar'}\n`;
+        
+        statusElement.textContent = statusText;
     }
     
     displayDetectionResults(result) {
-        const container = document.getElementById('detection-results');
-        if (!container) return;
+        const resultsElement = document.getElementById('detection-results') || 
+                              document.querySelector('.detection-results');
         
-        const count = result.detections.length;
-        const confidence = (result.confidence * 100).toFixed(1);
-        const processingTime = result.processing_time || 'Unbekannt';
+        if (!resultsElement) return;
         
-        let html = `
-            <div class="detection-summary">
-                <h4>🔍 Erkennungsergebnis</h4>
-                <p><strong>Objekte gefunden:</strong> ${count}</p>
-                <p><strong>Durchschnittliche Konfidenz:</strong> ${confidence}%</p>
-                <p><strong>Verarbeitungszeit:</strong> ${processingTime}s</p>
-            </div>
-        `;
+        let resultsText = `🔍 Unkraut-Erkennungs-Ergebnisse\n`;
+        resultsText += `⏰ ${new Date().toLocaleTimeString()}\n\n`;
         
-        if (result.detections.length > 0) {
-            html += `<div class="detection-list">`;
-            result.detections.forEach((detection, index) => {
-                const conf = (detection.confidence * 100).toFixed(1);
-                html += `
-                    <div class="detection-item">
-                        <span>🌿 ${index + 1}. ${detection.class || 'Unkraut'}</span>
-                        <span>${conf}%</span>
-                        <span>(${detection.x}, ${detection.y})</span>
-                    </div>
-                `;
+        if (result.detections && result.detections.length > 0) {
+            resultsText += `✅ ${result.detections.length} Unkräuter erkannt:\n\n`;
+            
+            result.detections.forEach((detection, i) => {
+                resultsText += `${i + 1}. ${detection.class || 'Unkraut'}\n`;
+                resultsText += `   Konfidenz: ${(detection.confidence * 100).toFixed(1)}%\n`;
+                if (detection.bbox) {
+                    resultsText += `   Position: (${detection.bbox.x}, ${detection.bbox.y})\n`;
+                }
+                resultsText += `\n`;
             });
-            html += `</div>`;
+        } else {
+            resultsText += `✅ Keine Unkräuter erkannt\n`;
+            resultsText += `🌱 Bereich ist sauber!`;
         }
         
-        container.innerHTML = html;
-        container.className = 'detection-results has-results';
+        resultsElement.textContent = resultsText;
+        resultsElement.className = result.detections?.length > 0 ? 
+            'detection-results has-results' : 'detection-results';
     }
     
-    displayDetectionError(message) {
-        const container = document.getElementById('detection-results');
-        if (!container) return;
+    showImageModal(filename) {
+        const imageUrl = `/api/gallery/image/${filename}`;
         
-        container.innerHTML = `
-            <div class="detection-error">
-                <h4>❌ Erkennungsfehler</h4>
-                <p>${message}</p>
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        `;
+        
+        modal.innerHTML = `
+            <div style="max-width: 90%; max-height: 90%; text-align: center;">
+                <img src="${imageUrl}" style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+                <p style="color: white; margin-top: 10px;">${filename}</p>
             </div>
         `;
-        container.className = 'detection-results has-error';
-    }
-    
-    clearDetectionResults() {
-        const container = document.getElementById('detection-results');
-        if (container) {
-            container.innerHTML = '<p>Keine Erkennung durchgeführt</p>';
-            container.className = 'detection-results';
-        }
-        this.showNotification('🧹 Erkennungsergebnisse gelöscht', 'info');
-    }
-    
-    toggleStream() {
-        // Toggle-Logik für Stream
-        const streamImg = document.getElementById('camera-stream');
-        if (!streamImg) return;
         
-        if (this.state.isStreaming) {
-            streamImg.style.display = 'none';
-            this.state.isStreaming = false;
-            this.showNotification('⏸️ Stream pausiert', 'info');
-        } else {
-            streamImg.style.display = 'block';
-            this.state.isStreaming = true;
-            this.showNotification('▶️ Stream gestartet', 'info');
-        }
+        modal.onclick = () => document.body.removeChild(modal);
+        document.body.appendChild(modal);
     }
     
-    toggleContinuousDetection() {
-        if (this.state.continuousDetection) {
-            // Stoppe kontinuierliche Erkennung
-            if (this.state.detectionInterval) {
-                clearInterval(this.state.detectionInterval);
-                this.state.detectionInterval = null;
-            }
-            this.state.continuousDetection = false;
-            this.showNotification('⏹️ Kontinuierliche Erkennung gestoppt', 'info');
-            
-            // Button-Text zurücksetzen
-            const button = document.querySelector('[data-ai-action="continuous"]');
-            if (button) button.textContent = '🔄 Kontinuierliche Erkennung';
-            
-        } else {
-            // Starte kontinuierliche Erkennung
-            this.state.continuousDetection = true;
-            this.state.detectionInterval = setInterval(() => {
-                this.detectWeeds().catch(console.error);
-            }, 5000); // Alle 5 Sekunden
-            
-            this.showNotification('🔄 Kontinuierliche Erkennung gestartet', 'success');
-            
-            // Button-Text ändern
-            const button = document.querySelector('[data-ai-action="continuous"]');
-            if (button) button.textContent = '⏹️ Erkennung stoppen';
-        }
-    }
-    
-    async updateCameraStats() {
-        try {
-            // Mock-Statistiken (später durch echte API ersetzen)
-            const stats = {
-                resolution: this.state.currentSettings.resolution,
-                quality: this.state.currentSettings.quality,
-                fps: this.state.currentSettings.fps,
-                streaming: this.state.isStreaming,
-                uptime: Math.floor(performance.now() / 1000),
-                totalCaptures: localStorage.getItem('totalCaptures') || 0
-            };
-            
-            const statsText = `
-Auflösung: ${stats.resolution}
-Qualität: ${stats.quality}%
-FPS: ${stats.fps}
-Status: ${stats.streaming ? 'Streaming' : 'Gestoppt'}
-Laufzeit: ${stats.uptime}s
-Aufnahmen: ${stats.totalCaptures}
-            `.trim();
-            
-            const container = document.getElementById('camera-stats');
-            if (container) {
-                container.textContent = statsText;
-            }
-            
-            console.log('📊 Kamera-Statistiken aktualisiert');
-            
-        } catch (error) {
-            console.error('Stats-Update-Fehler:', error);
-            const container = document.getElementById('camera-stats');
-            if (container) {
-                container.textContent = '❌ Statistiken nicht verfügbar';
-            }
-        }
-    }
-    
-    startStatsUpdates() {
-        // Initiales Update
-        this.updateCameraStats();
+    startAutoRefresh() {
+        // Status alle 30 Sekunden aktualisieren
+        this.autoRefreshInterval = setInterval(() => {
+            this.updateStatus();
+        }, 30000);
         
-        // Auto-Update alle 10 Sekunden
-        setInterval(() => {
-            this.updateCameraStats();
-        }, 10000);
+        console.log('🔄 Auto-Refresh gestartet');
     }
     
-    setButtonLoading(button, loading) {
-        if (loading) {
-            button.dataset.loading = 'true';
-            button.disabled = true;
-        } else {
-            delete button.dataset.loading;
-            button.disabled = false;
+    updateCaptureButton(text) {
+        const btn = document.getElementById('capture-btn') || 
+                   document.querySelector('[data-action="capture"]');
+        if (btn) {
+            btn.textContent = text;
+            btn.disabled = this.isCapturing;
+        }
+    }
+    
+    updateDetectionButton(text) {
+        const btn = document.getElementById('detect-btn') || 
+                   document.querySelector('[data-action="detect"]');
+        if (btn) {
+            btn.textContent = text;
+            btn.disabled = this.isDetecting;
+        }
+    }
+    
+    updateDetectionResults(text) {
+        const element = document.getElementById('detection-results') || 
+                       document.querySelector('.detection-results');
+        if (element) {
+            element.textContent = text;
         }
     }
     
     showNotification(message, type = 'info') {
-        // Nutze globale Notification-Funktion falls verfügbar
-        if (window.showNotification) {
-            window.showNotification(message, type);
-        } else {
-            // Fallback
-            console.log(`${type.toUpperCase()}: ${message}`);
+        console.log(`${type.toUpperCase()}: ${message}`);
+        
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 8888;
+            padding: 12px 20px; border-radius: 6px; color: white;
+            background: ${type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : type === 'success' ? '#4caf50' : '#2196f3'};
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            max-width: 300px; font-size: 14px;
+        `;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 5000);
+    }
+    
+    formatFileSize(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    
+    // Cleanup bei Page-Unload
+    destroy() {
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
         }
     }
 }
 
-// Automatische Initialisierung
-const cameraController = new CameraController();
+// Globale Instanz erstellen
+console.log('🚀 Initialisiere korrigierten Camera Controller...');
+window.cameraController = new CameraController();
 
-// Für Debugging und externe Zugriffe
-window.cameraController = cameraController;
+// Cleanup bei Page-Unload
+window.addEventListener('beforeunload', () => {
+    if (window.cameraController) {
+        window.cameraController.destroy();
+    }
+});
 
-// Globale Funktionen für Rückwärtskompatibilität (falls nötig)
-window.captureImage = () => cameraController.captureImage();
-window.detectWeeds = () => cameraController.detectWeeds();
+// Legacy-Funktionen für Kompatibilität
+window.captureImage = () => window.cameraController.captureImage();
+window.runDetection = () => window.cameraController.runDetection();
+window.loadGallery = () => window.cameraController.loadGallery();
+window.downloadImages = () => window.cameraController.downloadImages();
+window.clearImages = () => window.cameraController.clearGallery();
+
+console.log('✅ Korrigierte Camera Controller geladen - API-Endpoints repariert!');

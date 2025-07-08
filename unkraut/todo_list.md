@@ -1,4 +1,6 @@
 # 🤖 Unkraut-2025 - Verbleibende Aufgaben
+in dashbord option system shutdown und info wie lange er noch läuft (zur zeit 8 std nach dem boot )
+
 
 ## 🚨 Kritische Aufgaben (Sofort)
 

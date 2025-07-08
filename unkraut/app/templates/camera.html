@@ -1,191 +1,116 @@
-<!-- app/templates/camera.html - Enhanced mit Bulk-Operationen -->
+<!-- unkraut/app/templates/camera.html -->
 {% extends "base.html" %}
 
 {% block title %}Kamera - Unkraut-2025{% endblock %}
-{% block page_title %}📷 Erweiterte Kamera-Steuerung{% endblock %}
-
-{% block content %}
-<div class="grid">
-    <!-- Live-Stream Card -->
-    <div class="card">
-        <h3>📹 Live-Stream</h3>
-        <img id="camera-stream" 
-             src="/api/camera/stream" 
-             alt="Kamera Live-Stream"
-             class="camera-stream">
-        
-        <div class="camera-controls">
-            <button class="btn btn-primary" data-camera-action="capture">📸 Foto aufnehmen</button>
-            <button class="btn btn-success" data-camera-action="detect">🔍 Unkraut erkennen</button>
-            <button class="btn btn-warning" data-camera-action="toggle-stream">⏯️ Stream Toggle</button>
-        </div>
-    </div>
-
-    <!-- KI-Erkennung Card -->
-    <div class="card">
-        <h3>🧠 KI-Unkrauterkennung</h3>
-        <div id="detection-results" class="detection-results">
-            <p>Keine Erkennung durchgeführt</p>
-        </div>
-        
-        <div class="detection-controls">
-            <button class="btn btn-success" data-ai-action="detect">🔍 Einmalige Erkennung</button>
-            <button class="btn btn-info" data-ai-action="continuous">🔄 Kontinuierliche Erkennung</button>
-            <button class="btn btn-secondary" data-ai-action="clear">🧹 Ergebnisse löschen</button>
-        </div>
-    </div>
-</div>
-
-<!-- Kamera-Einstellungen -->
-<div class="card">
-    <h3>⚙️ Kamera-Einstellungen</h3>
-    <div class="settings-grid">
-        <div class="setting-control">
-            <label for="resolution-select">Auflösung:</label>
-            <select id="resolution-select" data-setting="resolution">
-                <option value="640x480">640x480 (Standard)</option>
-                <option value="1280x720">1280x720 (HD)</option>
-                <option value="1920x1080">1920x1080 (Full HD)</option>
-            </select>
-        </div>
-        
-        <div class="setting-control">
-            <label for="quality-slider">Bildqualität: <span id="quality-display">80</span>%</label>
-            <input type="range" 
-                   min="10" 
-                   max="100" 
-                   value="80" 
-                   class="slider" 
-                   id="quality-slider"
-                   data-setting="quality">
-        </div>
-        
-        <div class="setting-control">
-            <label for="fps-slider">FPS: <span id="fps-display">30</span></label>
-            <input type="range" 
-                   min="5" 
-                   max="60" 
-                   value="30" 
-                   class="slider" 
-                   id="fps-slider"
-                   data-setting="fps">
-        </div>
-    </div>
-</div>
-
-<!-- Galerie-Statistiken -->
-<div class="card">
-    <h3>📊 Galerie-Übersicht</h3>
-    <div class="stats-grid">
-        <div class="stat-item">
-            <div class="stat-value" id="total-images">-</div>
-            <div class="stat-label">Gesamte Bilder</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" id="total-size">-</div>
-            <div class="stat-label">Speicherplatz</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" id="today-count">-</div>
-            <div class="stat-label">Heute aufgenommen</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" id="tag-count">-</div>
-            <div class="stat-label">Eindeutige Tags</div>
-        </div>
-    </div>
-    <button class="btn btn-primary" data-stats-action="update">🔄 Statistiken aktualisieren</button>
-</div>
-
-<!-- Erweiterte Bildergalerie -->
-<div class="card gallery-card">
-    <div class="card-header">
-        <h3>📁 Professionelle Bildergalerie</h3>
-        <div class="gallery-quick-actions">
-            <button class="btn btn-info btn-small" data-gallery-action="load">🔄 Laden</button>
-            <button class="btn btn-secondary btn-small" data-gallery-action="toggle-bulk">☑️ Bulk</button>
-        </div>
-    </div>
-    
-    <!-- Galerie Container - wird von JavaScript gefüllt -->
-    <div id="image-gallery" class="image-gallery enhanced">
-        <div class="gallery-loading">
-            <p>📸 Lade Enhanced Bildergalerie...</p>
-            <div class="loading-spinner"></div>
-        </div>
-    </div>
-    
-    <!-- Standard Galerie-Controls -->
-    <div class="gallery-controls standard">
-        <button class="btn btn-warning" data-gallery-action="download">💾 Alle herunterladen</button>
-        <button class="btn btn-danger" data-gallery-action="clear">🗑️ Alle löschen</button>
-        <button class="btn btn-info" data-gallery-action="cleanup">🧹 Aufräumen</button>
-    </div>
-</div>
-
-<!-- Erweiterte Tools -->
-<div class="card">
-    <h3>🔧 Erweiterte Tools</h3>
-    <div class="tools-grid">
-        <div class="tool-section">
-            <h4>🏷️ Bulk-Tagging</h4>
-            <p>Mehrere Bilder gleichzeitig mit Tags versehen</p>
-            <div class="tool-controls">
-                <input type="text" id="bulk-tag-input" placeholder="Tag eingeben..." class="form-input">
-                <button class="btn btn-warning" data-tool-action="bulk-tag">🏷️ Tag hinzufügen</button>
-            </div>
-        </div>
-        
-        <div class="tool-section">
-            <h4>🧹 Smart Cleanup</h4>
-            <p>Automatisch alte oder große Dateien entfernen</p>
-            <div class="tool-controls">
-                <select id="cleanup-preset" class="form-select">
-                    <option value="conservative">🔒 Konservativ (30+ Tage, 10+ MB)</option>
-                    <option value="moderate">⚖️ Moderat (14+ Tage, 5+ MB)</option>
-                    <option value="aggressive">⚡ Aggressiv (7+ Tage, 2+ MB)</option>
-                </select>
-                <button class="btn btn-secondary" data-tool-action="preview-cleanup">👁️ Vorschau</button>
-                <button class="btn btn-danger" data-tool-action="execute-cleanup">🗑️ Ausführen</button>
-            </div>
-        </div>
-        
-        <div class="tool-section">
-            <h4>📤 Export</h4>
-            <p>Bilder für externe Nutzung vorbereiten</p>
-            <div class="tool-controls">
-                <select id="export-format" class="form-select">
-                    <option value="original">📁 Original (ZIP)</option>
-                    <option value="web">🌐 Web-optimiert</option>
-                    <option value="ai-training">🧠 KI-Training-Set</option>
-                </select>
-                <button class="btn btn-success" data-tool-action="start-export">📤 Export starten</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Kamera-Statistiken Detail -->
-<div class="card">
-    <h3>📊 Detaillierte Kamera-Statistiken</h3>
-    <div id="camera-stats" class="status-display enhanced">
-        Lade erweiterte Statistiken...
-    </div>
-    <div class="stats-actions">
-        <button class="btn btn-primary" data-stats-action="update">🔄 Aktualisieren</button>
-        <button class="btn btn-info" data-tool-action="export-stats">📊 Statistik exportieren</button>
-        <button class="btn btn-warning" data-tool-action="reset-stats">🔄 Zurücksetzen</button>
-    </div>
-</div>
-{% endblock %}
+{% block page_title %}📹 Kamera-Ansicht{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/camera.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/camera-enhanced.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/camera_enhanced.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Live Stream & System Status -->
+<div class="camera-layout">
+    <!-- Live Stream Sektion -->
+    <div class="live-stream-section">
+        <h3>📹 Live Stream</h3>
+        <div class="camera-stream-container">
+            <img id="camera-stream" src="/api/camera/stream" alt="Kamera Stream">
+        </div>
+        <div class="stream-controls">
+            <button class="btn btn-success" onclick="captureImage()">
+                📸 Foto aufnehmen
+            </button>
+            <button class="btn btn-primary" onclick="detectWeeds()">
+                🔍 Unkraut erkennen
+            </button>
+            <button class="btn btn-info" onclick="toggleStream()">
+                📹 Stream an/aus
+            </button>
+        </div>
+    </div>
+    
+    <!-- System Status Sektion -->
+    <div class="system-stats-section">
+        <h3>📊 Kamera-Statistiken</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="cpu-usage">-</div>
+                <div class="stat-label">CPU Nutzung</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="ram-usage">-</div>
+                <div class="stat-label">RAM Nutzung</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="cpu-temp">-</div>
+                <div class="stat-label">CPU Temperatur</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="camera-status">-</div>
+                <div class="stat-label">Kamera Status</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="arm-status">-</div>
+                <div class="stat-label">Roboterarm</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stream-fps">-</div>
+                <div class="stat-label">Stream FPS</div>
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="updateCameraStats()" data-full-width="true">
+            🔄 Statistiken aktualisieren
+        </button>
+    </div>
+</div>
+
+<!-- KI-Ergebnisse -->
+<div class="ki-results-section">
+    <h3>🔍 KI-Ergebnisse</h3>
+    <div id="detection-results" class="detection-display">
+        Keine Erkennungen
+    </div>
+    <div class="ki-controls">
+        <button class="btn btn-warning" onclick="continuousDetection()">
+            📹 Kontinuierliche Erkennung
+        </button>
+        <button class="btn btn-secondary" onclick="clearResults()">
+            🗑️ Ergebnisse löschen
+        </button>
+    </div>
+</div>
+
+<!-- Bildergalerie -->
+<div class="gallery-section">
+    <div class="gallery-header">
+        <h3>📁 Aufgenommene Bilder</h3>
+        <div class="gallery-stats">
+            <span id="gallery-count">0 Bilder</span>
+            <span id="gallery-size">0 MB</span>
+        </div>
+    </div>
+    
+    <div id="image-gallery" class="image-gallery">
+        <div class="no-images">
+            Keine Bilder aufgenommen
+        </div>
+    </div>
+    
+    <div class="gallery-controls">
+        <button class="btn btn-info" onclick="loadImageGallery()">
+            🔄 Galerie laden
+        </button>
+        <button class="btn btn-warning" onclick="downloadImages()">
+            💾 Bilder herunterladen
+        </button>
+        <button class="btn btn-danger" onclick="clearImages()">
+            🗑️ Alle löschen
+        </button>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
-<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
-<script src="{{ url_for('static', filename='js/camera-tools.js') }}"></script>
+<script src="{{ url_for('static', filename='js/camera_enhanced.js') }}"></script>
 {% endblock %}

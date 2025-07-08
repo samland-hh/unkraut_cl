@@ -341,10 +341,10 @@ class CameraManager:
         if frame_data and len(frame_data) > 1000:
             try:
                 if not filename:
-                    # Neues Datumsformat: capture_YY.MM.DD_hh.mm_ss.jpg
+                    # Neues Datumsformat: img_YY.MM.DD_hh.mm_ss.jpg
                     from datetime import datetime
                     now = datetime.now()
-                    filename = f"capture_{now.strftime('%y.%m.%d_%H.%M_%S')}.jpg"
+                    filename = f"img_{now.strftime('%y.%m.%d_%H.%M_%S')}.jpg"
                 
                 filepath = os.path.join("data/images", filename)
                 os.makedirs("data/images", exist_ok=True)
