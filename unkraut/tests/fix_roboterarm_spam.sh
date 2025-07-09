@@ -1,3 +1,25 @@
+#!/bin/bash
+# unkraut/fix_roboterarm_spam.sh
+# Behebt das Roboterarm-Spam Problem sofort
+
+echo "🔧 Unkraut-2025 - Roboterarm-Spam Fix"
+echo "====================================="
+
+cd ~/robo/claude/unkraut
+
+# 1. Backup der aktuellen Datei
+echo "📁 Erstelle Backup..."
+if [ -f "hardware/robot_arm.py" ]; then
+    cp hardware/robot_arm.py hardware/robot_arm_backup_$(date +%Y%m%d_%H%M%S).py
+    echo "✅ Backup erstellt: hardware/robot_arm_backup_*.py"
+else
+    echo "⚠️  hardware/robot_arm.py nicht gefunden"
+fi
+
+# 2. Erstelle die gefixte Version
+echo "🔨 Erstelle gefixte Version..."
+
+cat > hardware/robot_arm.py << 'EOF'
 # unkraut/hardware/robot_arm.py
 """
 GEFIXTE Roboterarm-Implementierung ohne Spam
@@ -315,3 +337,36 @@ def test_robot_arm_debug():
 
 if __name__ == '__main__':
     test_robot_arm_silent()
+EOF
+
+echo "✅ Gefixte Version erstellt"
+
+# 3. Teste die neue Version
+echo "🧪 Teste neue Version..."
+python3 -c "
+import sys
+sys.path.append('.')
+from hardware.robot_arm import test_robot_arm_silent
+test_robot_arm_silent()
+"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Test erfolgreich - kein Spam mehr!"
+else
+    echo "❌ Test fehlgeschlagen"
+    exit 1
+fi
+
+# 4. Zeige Unterschied
+echo ""
+echo "📊 Änderungen:"
+echo "VORHER: 🦾 base: 90.0° (Hardware) <- Bei jedem Import"
+echo "NACHHER: Kein Output außer bei debug_mode=True"
+echo ""
+echo "🔧 Debug-Modus aktivieren (falls gewünscht):"
+echo "python3 -c \"from hardware.robot_arm import robot_arm; robot_arm.enable_debug(); robot_arm.move_joint('base', 45)\""
+echo ""
+echo "✅ Roboterarm-Spam Problem behoben!"
+echo ""
+echo "🧪 Teste jetzt dein Grün-Erkennungssystem erneut:"
+echo "python test/test_green_detection_improved.py"
