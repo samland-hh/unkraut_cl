@@ -1,0 +1,272 @@
+<!-- app/templates/mobile_test.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Test - Unkraut-2025</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .test-header {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .test-header h1 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        
+        .hamburger-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+            min-width: 50px;
+            height: 40px;
+        }
+        
+        .test-nav {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .test-nav.open {
+            display: flex;
+        }
+        
+        .test-nav a {
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 16px;
+        }
+        
+        .test-nav a:active {
+            background: #0056b3;
+        }
+        
+        .test-info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            background: #ffc107;
+            color: black;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            margin: 10px 5px;
+            cursor: pointer;
+            min-height: 50px;
+        }
+        
+        .debug-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <h1>Mobile Navigation Test</h1>
+        <button class="hamburger-btn" onclick="toggleTestNav()" id="hamburger">
+            ☰
+        </button>
+    </div>
+    
+    <nav class="test-nav" id="test-nav">
+        <a href="/">🏠 Dashboard</a>
+        <a href="/control">🎮 Fahrzeug</a>
+        <a href="/arm">🦾 Roboterarm</a>
+        <a href="/camera">📷 Kamera</a>
+        <a href="/combined">🎯 Kamera+Arm</a>
+        <a href="/ai">🧠 KI-Erkennung</a>
+        <a href="/debug">🔧 Debug</a>
+    </nav>
+    
+    <div class="test-info">
+        <h3>📱 Mobile Navigation Test</h3>
+        <p>Diese Seite testet die Mobile-Navigation isoliert.</p>
+        <p><strong>Bildschirmgröße:</strong> <span id="screen-size"></span></p>
+        <p><strong>Touch-Support:</strong> <span id="touch-support"></span></p>
+        <p><strong>User-Agent:</strong> <span id="user-agent"></span></p>
+    </div>
+    
+    <div>
+        <button class="test-button" onclick="testNavigation()">🧭 Navigation testen</button>
+        <button class="test-button" onclick="testTouch()">👆 Touch testen</button>
+        <button class="test-button" onclick="runDiagnostic()">🔍 Diagnose</button>
+        <button class="test-button" onclick="clearDebug()">🗑️ Löschen</button>
+    </div>
+    
+    <div class="debug-output" id="debug-output">
+Klicke auf "Diagnose" um Mobile-Debug zu starten...
+    </div>
+
+    <script>
+        let debugLog = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            debugLog.push(logMessage);
+            updateDebugOutput();
+            console.log(logMessage);
+        }
+        
+        function updateDebugOutput() {
+            document.getElementById('debug-output').textContent = debugLog.join('\n');
+        }
+        
+        function clearDebug() {
+            debugLog = [];
+            updateDebugOutput();
+        }
+        
+        function toggleTestNav() {
+            const nav = document.getElementById('test-nav');
+            const hamburger = document.getElementById('hamburger');
+            
+            nav.classList.toggle('open');
+            const isOpen = nav.classList.contains('open');
+            hamburger.textContent = isOpen ? '✕' : '☰';
+            
+            log(`Navigation ${isOpen ? 'geöffnet' : 'geschlossen'}`);
+        }
+        
+        function testNavigation() {
+            log('=== Navigation Test ===');
+            
+            const nav = document.getElementById('test-nav');
+            const hamburger = document.getElementById('hamburger');
+            
+            log(`Navigation Element: ${nav ? 'Gefunden' : 'FEHLT'}`);
+            log(`Hamburger Element: ${hamburger ? 'Gefunden' : 'FEHLT'}`);
+            
+            if (hamburger) {
+                const rect = hamburger.getBoundingClientRect();
+                log(`Hamburger Position: x=${rect.x}, y=${rect.y}`);
+                log(`Hamburger Größe: ${rect.width}x${rect.height}`);
+                log(`Hamburger sichtbar: ${rect.width > 0 && rect.height > 0}`);
+            }
+            
+            // Test Toggle
+            log('Teste Toggle-Funktion...');
+            toggleTestNav();
+            setTimeout(() => {
+                toggleTestNav();
+                log('Toggle-Test abgeschlossen');
+            }, 1000);
+        }
+        
+        function testTouch() {
+            log('=== Touch Test ===');
+            log(`ontouchstart verfügbar: ${'ontouchstart' in window}`);
+            log(`Touch Points: ${navigator.maxTouchPoints || 0}`);
+            log(`Pointer Events: ${'onpointerdown' in window}`);
+            
+            // Touch Event Test
+            const hamburger = document.getElementById('hamburger');
+            if (hamburger) {
+                hamburger.addEventListener('touchstart', function(e) {
+                    log('Touch Start erkannt');
+                    e.preventDefault();
+                });
+                
+                hamburger.addEventListener('touchend', function(e) {
+                    log('Touch End erkannt');
+                    e.preventDefault();
+                });
+                
+                log('Touch Event Listener registriert');
+            }
+        }
+        
+        function runDiagnostic() {
+            log('=== MOBILE DIAGNOSE START ===');
+            
+            // Bildschirm Info
+            log(`Bildschirm: ${screen.width}x${screen.height}`);
+            log(`Viewport: ${window.innerWidth}x${window.innerHeight}`);
+            log(`Device Pixel Ratio: ${window.devicePixelRatio}`);
+            log(`Orientation: ${screen.orientation ? screen.orientation.angle : 'unbekannt'}`);
+            
+            // Browser Info
+            log(`User Agent: ${navigator.userAgent}`);
+            log(`Platform: ${navigator.platform}`);
+            log(`Language: ${navigator.language}`);
+            
+            // Feature Detection
+            log(`Local Storage: ${typeof(Storage) !== "undefined"}`);
+            log(`Cookies: ${navigator.cookieEnabled}`);
+            log(`Online: ${navigator.onLine}`);
+            
+            // CSS Media Query Test
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            log(`CSS Media Query (Mobile): ${isMobile}`);
+            
+            // Element Tests
+            testNavigation();
+            testTouch();
+            
+            log('=== DIAGNOSE ENDE ===');
+        }
+        
+        // Seite geladen
+        document.addEventListener('DOMContentLoaded', function() {
+            // Info anzeigen
+            document.getElementById('screen-size').textContent = 
+                `${window.innerWidth}x${window.innerHeight}`;
+            document.getElementById('touch-support').textContent = 
+                'ontouchstart' in window ? 'Ja' : 'Nein';
+            document.getElementById('user-agent').textContent = 
+                navigator.userAgent.substring(0, 50) + '...';
+            
+            log('Mobile Test Seite geladen');
+            log(`Bildschirmgröße: ${window.innerWidth}x${window.innerHeight}`);
+            
+            // Auto-Diagnose für sehr kleine Bildschirme
+            if (window.innerWidth <= 480) {
+                setTimeout(runDiagnostic, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

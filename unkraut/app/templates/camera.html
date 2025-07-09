@@ -1,80 +1,84 @@
-<!-- unkraut/app/templates/camera.html -->
+<!-- app/templates/camera.html -->
 {% extends "base.html" %}
 
 {% block title %}Kamera - Unkraut-2025{% endblock %}
-{% block page_title %}📹 Kamera-Ansicht{% endblock %}
+{% block page_title %}📷 Kamera & Unkraut-Erkennung{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/camera_enhanced.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/camera.css') }}">
 {% endblock %}
 
 {% block content %}
-<!-- Live Stream & System Status -->
-<div class="camera-layout">
-    <!-- Live Stream Sektion -->
-    <div class="live-stream-section">
-        <h3>📹 Live Stream</h3>
-        <div class="camera-stream-container">
-            <img id="camera-stream" src="/api/camera/stream" alt="Kamera Stream">
+<!-- Kamera Stream -->
+<div class="camera-section">
+    <div class="card">
+        <h3>📹 Live Kamera-Stream</h3>
+        <div class="stream-container">
+            <img id="camera-stream" 
+                 src="/api/camera/stream" 
+                 alt="Kamera Stream" 
+                 class="camera-stream">
         </div>
-        <div class="stream-controls">
-            <button class="btn btn-success" onclick="captureImage()">
+        
+        <div class="camera-controls">
+            <button id="capture-btn" class="btn btn-primary" onclick="captureImage()">
                 📸 Foto aufnehmen
             </button>
-            <button class="btn btn-primary" onclick="detectWeeds()">
-                🔍 Unkraut erkennen
-            </button>
-            <button class="btn btn-info" onclick="toggleStream()">
-                📹 Stream an/aus
+            <button class="btn btn-secondary" onclick="toggleStream()">
+                🔄 Stream toggle
             </button>
         </div>
-    </div>
-    
-    <!-- System Status Sektion -->
-    <div class="system-stats-section">
-        <h3>📊 Kamera-Statistiken</h3>
-        <div class="stats-grid">
+        
+        <div class="camera-stats">
             <div class="stat-item">
-                <div class="stat-value" id="cpu-usage">-</div>
-                <div class="stat-label">CPU Nutzung</div>
+                <span class="stat-label">CPU:</span>
+                <span id="cpu-usage" class="stat-value">0%</span>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="ram-usage">-</div>
-                <div class="stat-label">RAM Nutzung</div>
+                <span class="stat-label">RAM:</span>
+                <span id="ram-usage" class="stat-value">0%</span>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="cpu-temp">-</div>
-                <div class="stat-label">CPU Temperatur</div>
+                <span class="stat-label">Temp:</span>
+                <span id="cpu-temp" class="stat-value">0°C</span>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="camera-status">-</div>
-                <div class="stat-label">Kamera Status</div>
+                <span class="stat-label">Kamera:</span>
+                <span id="camera-status" class="stat-value">Offline</span>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="arm-status">-</div>
-                <div class="stat-label">Roboterarm</div>
+                <span class="stat-label">Roboterarm:</span>
+                <span id="arm-status" class="stat-value">Mock</span>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="stream-fps">-</div>
-                <div class="stat-label">Stream FPS</div>
+                <span class="stat-label">FPS:</span>
+                <span id="stream-fps" class="stat-value">0 FPS</span>
             </div>
         </div>
-        <button class="btn btn-primary" onclick="updateCameraStats()" data-full-width="true">
-            🔄 Statistiken aktualisieren
-        </button>
     </div>
 </div>
 
-<!-- KI-Ergebnisse -->
-<div class="ki-results-section">
-    <h3>🔍 KI-Ergebnisse</h3>
-    <div id="detection-results" class="detection-display">
-        Keine Erkennungen
-    </div>
-    <div class="ki-controls">
-        <button class="btn btn-warning" onclick="continuousDetection()">
-            📹 Kontinuierliche Erkennung
-        </button>
+<!-- Unkraut-Erkennung -->
+<div class="detection-section">
+    <div class="card">
+        <h3>🌿 Unkraut-Erkennung</h3>
+        
+        <div class="detection-controls">
+            <button class="btn btn-success" onclick="detectWeeds()">
+                🔍 Unkraut erkennen
+            </button>
+            <button class="btn btn-info" onclick="continuousDetection()">
+                📹 Kontinuierliche Erkennung
+            </button>
+        </div>
+        
+        <div class="detection-results">
+            <h4>Erkennungsergebnisse:</h4>
+            <div id="detection-results" class="results-display">
+                Keine Erkennungen
+            </div>
+        </div>
+        
         <button class="btn btn-secondary" onclick="clearResults()">
             🗑️ Ergebnisse löschen
         </button>
@@ -112,5 +116,164 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/camera_enhanced.js') }}"></script>
+<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+
+<!-- MOBILE TOUCH FIX - Nur das Wichtigste, kein Debug-Overhead -->
+<script>
+// Einfacher Mobile Touch Fix - ohne Debug-Logging
+function addMobileTouchSupport() {
+    // Nur für Mobile Geräte
+    if (!('ontouchstart' in window)) return;
+    
+    console.log('📱 Mobile Touch Support aktiviert');
+    
+    // Touch-Support für alle wichtigen Buttons
+    setTimeout(function() {
+        // Foto-Button (wichtigster!)
+        const captureBtn = document.getElementById('capture-btn');
+        if (captureBtn) {
+            captureBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                
+                // Visuelles Feedback
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.8';
+                
+                setTimeout(() => {
+                    this.style.transform = '';
+                    this.style.opacity = '';
+                }, 150);
+                
+                // Foto aufnehmen
+                captureImage();
+                
+            }, {passive: false});
+            
+            // Touch-Optimierungen
+            captureBtn.style.userSelect = 'none';
+            captureBtn.style.webkitUserSelect = 'none';
+            captureBtn.style.webkitTouchCallout = 'none';
+            captureBtn.style.touchAction = 'manipulation';
+        }
+        
+        // Andere wichtige Buttons
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(btn => {
+            if (btn.id !== 'capture-btn') { // Foto-Button schon behandelt
+                btn.addEventListener('touchstart', function(e) {
+                    // Einfaches Touch-Feedback ohne Handler-Override
+                    this.style.transform = 'scale(0.98)';
+                    setTimeout(() => this.style.transform = '', 100);
+                }, {passive: true});
+                
+                // Touch-Optimierungen
+                btn.style.userSelect = 'none';
+                btn.style.webkitUserSelect = 'none';
+                btn.style.webkitTouchCallout = 'none';
+            }
+        });
+        
+        console.log('✅ Mobile Touch Events aktiviert');
+    }, 500);
+}
+
+// Notification System (einfach, ohne Debug-Overhead)
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed; 
+        top: 20px; 
+        right: 20px; 
+        background: ${type === 'error' ? '#ff4444' : type === 'success' ? '#44ff44' : '#2196F3'}; 
+        color: white; 
+        padding: 12px 20px; 
+        border-radius: 6px; 
+        font-weight: bold; 
+        z-index: 10000;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 14px;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(function() {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
+// Erweiterte captureImage mit Mobile-Support
+function captureImage() {
+    console.log('📸 Foto-Aufnahme gestartet...');
+    
+    // Visuelles Feedback für Mobile
+    const btn = document.getElementById('capture-btn');
+    if (btn) {
+        btn.style.background = '#1e7e34';
+        setTimeout(() => btn.style.background = '', 200);
+    }
+    
+    const filename = 'img_' + generateTimestamp() + '.jpg';
+    
+    fetch('/api/camera/capture', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({filename: filename})
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.filename) {
+            showNotification(`📸 Foto gespeichert: ${data.filename}`, 'success');
+            setTimeout(loadImageGallery, 1000);
+        } else {
+            showNotification('❌ Foto-Aufnahme fehlgeschlagen', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Kamera-Fehler:', error);
+        showNotification('❌ Kamera-Fehler: ' + error.message, 'error');
+    });
+}
+
+function generateTimestamp() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    
+    return [
+        String(now.getFullYear()).slice(-2),
+        pad(now.getMonth() + 1),
+        pad(now.getDate()),
+        pad(now.getHours()),
+        pad(now.getMinutes()),
+        pad(now.getSeconds())
+    ].join('.');
+}
+
+// Initialization
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📷 Kamera-Interface geladen');
+    
+    // Mobile Touch Support aktivieren
+    addMobileTouchSupport();
+    
+    // Initiale Daten laden (falls camera.js diese Funktionen nicht hat)
+    if (typeof updateCameraStats === 'function') {
+        updateCameraStats();
+    }
+    if (typeof loadImageGallery === 'function') {
+        loadImageGallery();
+    }
+    
+    console.log('✅ Kamera bereit - Mobile Touch Support aktiv');
+});
+</script>
 {% endblock %}

@@ -10,3 +10,8 @@ bp = Blueprint('camera', __name__)
 def camera_view():
     """Kamera-Ansichtsseite"""
     return render_template('camera.html')
+
+@bp.route('/mobile_test')
+def mobile_test():
+    """Mobile Test-Seite für Debugging"""
+    return render_template('mobile_test.html')    

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Unkraut-2025 Projekt</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            padding: 20px;
+        }
+
+        .block {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: box-shadow 0.3s;
+        }
+
+        .block:hover {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .copied {
+            color: green;
+            font-size: 0.9em;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="block" onclick="copyToClipboard('beschreibung')">
+        <div class="title">📌 Projektbeschreibung</div>
+        <pre id="beschreibung">
+Unkraut-2025 ist ein autonomer Unkraut-Roboter auf Raspberry Pi Basis für automatisierte oder manuelle Unkraut-Bekämpfung.
+Kernfunktionen:
+
+Webbasierte Steuerung über Tablet/Handy/PC
+Kamerastreaming 
+WLAN Access Point Modus (offline-autark)
+Erweiterbar mit Motorsteuerung, AI-Vision
+Backup- und Wiederherstellungssystem
+
+Technologie: Flask-Server, Python, OpenCV, Raspberry Pi 3, Pi Camera, Servos/Motoren, Sensoren
+Einsatz: Autonomer Gartenhelfer, ML-Experimente für Unkrauterkennung, steuerbare Robotik-Plattform für Landwirtschaft/Bildung.
+        </pre>
+        <div class="copied" id="copied1">Inhalt kopiert!</div>
+    </div>
+
+    <div class="block" onclick="copyToClipboard('anweisungen')">
+        <div class="title">🛠️ Projektanweisungen</div>
+        <pre id="anweisungen">
+# Unkraut-2025 Projekt-Anweisungen
+
+## Code-Standards & Richtlinien
+
+### 1. Datei-Kommentare
+- **Jede Datei bekommt ganz am Anfang den Dateinamen mit Pfad als Kommentar**
+- Format: `# unkraut/pfad/zur/datei.py` oder `<!-- unkraut/pfad/zur/datei.html -->`
+- So früh wie möglich im Code platzieren
+
+### 2. Python-Dateien
+- **Nur reines Python** - keine HTML-Teile in Python-Dateien
+- Klare Trennung zwischen Backend (Python) und Frontend (HTML/JS)
+- Web-Templates gehören in `app/templates/`
+
+### 3. Entwicklungsphilosophie
+- **Einfache Lösungen** ohne großen Overhead
+- Fokus auf das Geforderte - **keine unnötigen Sachen**
+- Funktionalität vor Perfektion
+- Wartbarer, verständlicher Code
+
+### 4. Test & Debug
+- **Alle Debug/Test-Scripts** in `unkraut/test/` platzieren
+- Experimenteller Code gehört nicht in Produktions-Verzeichnisse
+- Separate Testumgebung für Entwicklung
+
+## Projekt-Struktur
+
+```
+unkraut/
+├── app/                    # Flask-Anwendung
+│   ├── routes/            # API-Routen & Endpoints
+│   ├── templates/         # HTML-Templates
+│   ├── static/           # CSS, JS, Images
+│   └── utils/            # Python-Hilfsfunktionen
+├── hardware/             # Hardware-Steuerung (Pi, Servos, etc.)
+├── ai/                   # KI-Modelle & Training
+│   ├── models/           # Trainierte Modelle
+│   └── training_data/    # Trainingsdaten
+├── config/               # Konfigurationsdateien
+├── data/                 # Laufzeit-Daten
+│   ├── images/           # Aufgenommene Bilder
+│   ├── videos/           # Video-Aufnahmen
+│   └── sessions/         # Session-Daten
+├── logs/                 # Log-Dateien
+├── test/                 # **Debug & Test-Scripts**
+├── scripts/              # System-Scripts
+├── backups/              # Backup-Dateien
+└── deployment/           # Docker, Systemd, etc.
+```
+
+## Technische Spezifikationen
+
+### Hardware-Requirements
+- **Raspberry Pi 3** (primäre Plattform)
+- **Pi Camera** für Bilderfassung
+- **Servos/Motoren** für Roboter-Arm
+- **Sensoren** für Umgebungsdaten
+- **Batterie-Betrieb** für Autonomie
+
+### Software-Stack
+- **Python 3.9+** als Hauptsprache
+- **Flask** für Web-Framework
+- **OpenCV** für Bildverarbeitung
+- **NumPy** für numerische Operationen
+- **RPi.GPIO** für Hardware-Steuerung
+- **Picamera2** für Kamera-Interface
+
+### Betriebsmodi
+- **WLAN Access Point** für offline-Betrieb
+- **Webbasierte Steuerung** über Browser
+- **Kamerastreaming** 
+- **Autonomer Modus** mit KI-Erkennung
+- **Manueller Modus** für direkte Steuerung
+
+## Entwicklungs-Richtlinien
+
+### 1. Code-Organisation
+- **Klare Trennung** zwischen Hardware, Software und Web-Interface
+- **Modularer Aufbau** für einfache Erweiterung
+- **Einheitliche Namenskonvention** für alle Dateien
+
+### 2. Fehlerbehandlung
+- **Robuste Hardware-Abstraktion** mit Fallback-Modi
+- **Ausführliche Logging** für Debugging
+- **Graceful Degradation** bei Hardware-Ausfällen
+
+### 3. Dokumentation
+- **Inline-Kommentare** für komplexe Logik
+- **README-Dateien** für Module
+- **API-Dokumentation** für Endpoints
+
+### 4. Testing
+- **Unit-Tests** für kritische Funktionen
+- **Hardware-Mocks** für Entwicklung ohne Pi
+- **Integration-Tests** für Gesamtsystem
+
+## Deployment-Strategie
+
+### 1. Entwicklung
+- **Lokale Entwicklung** mit Hardware-Simulation
+- **Git-basierte Versionskontrolle**
+- **Continuous Integration** via GitHub Actions
+
+### 2. Produktion
+- **Systemd-Services** für Auto-Start
+- **Backup-Strategien** für Daten und Konfiguration
+- **Update-Mechanismen** für Remote-Wartung
+
+### 3. Monitoring
+- **System-Überwachung** (CPU, RAM, Temperatur)
+- **Hardware-Status** (Kamera, Servos, Sensoren)
+- **Log-Aggregation** für Fehleranalyse
+
+## Lizenz & Rechtliches
+
+- **MIT License** für Open-Source-Kompatibilität
+- **Dokumentation** der verwendeten Bibliotheken
+- **Hinweise** zu Hardware-Sicherheit
+
+## Erweiterbarkeitprinzipien
+
+### 1. Modular Design
+- **Plugin-Architektur** für neue Funktionen
+- **Hardware-Abstraktionsschicht** für verschiedene Sensoren
+- **API-First-Ansatz** für externe Integration
+
+### 2. Skalierbarkeit
+- **Multi-Roboter-Unterstützung** vorbereitet
+- **Cloud-Integration** möglich
+- **Machine Learning Pipeline** erweiterbar
+
+### 3. Maintenance
+- **Automatische Updates** für kritische Komponenten
+- **Remote-Diagnose** für Fehlerbehebung
+- **Backup/Restore-Funktionalität** für Systemwiederherstellung
+
+---
+
+**Wichtigste Regel**: Mach das was gefordert wird, keine unnötigen Sachen - Fokus auf Funktionalität und Einfachheit!
+        </pre>
+        <div class="copied" id="copied2">Inhalt kopiert!</div>
+    </div>
+
+    <script>
+        function copyToClipboard(id) {
+            const text = document.getElementById(id).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const copiedMsg = id === 'beschreibung' ? 'copied1' : 'copied2';
+                const msgElement = document.getElementById(copiedMsg);
+                msgElement.style.display = 'block';
+                setTimeout(() => msgElement.style.display = 'none', 2000);
+            });
+        }
+    </script>
+
+</body>
+</html>
