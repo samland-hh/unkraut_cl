@@ -1,56 +1,53 @@
-<!-- app/templates/dashboard.html -->
+<!-- unkraut/app/templates/dashboard.html -->
 {% extends "base.html" %}
 
 {% block title %}Dashboard - Unkraut-2025{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard - Autonomer Roboter{% endblock %}
 
 {% block content %}
-<!-- Navigation zu allen Seiten -->
-<div class="card">
-    <div class="section-title">🚀 Navigation</div>
-    <div class="nav-grid">
-        <a href="/control" class="nav-card btn-success">
-            <div class="nav-icon">🎮</div>
-            <div class="nav-label">Fahrzeug</div>
-            <div class="nav-desc">Roboter steuern</div>
-        </a>
-        
-        <a href="/arm" class="nav-card btn-warning">
-            <div class="nav-icon">🦾</div>
-            <div class="nav-label">Roboterarm</div>
-            <div class="nav-desc">Servo-Steuerung</div>
-        </a>
-        
-        <a href="/camera" class="nav-card btn-info">
-            <div class="nav-icon">📷</div>
-            <div class="nav-label">Kamera</div>
-            <div class="nav-desc">Live-Stream</div>
-        </a>
-        
-        <a href="/combined" class="nav-card btn-danger">
-            <div class="nav-icon">🎯</div>
-            <div class="nav-label">Kamera+Arm</div>
-            <div class="nav-desc">Kombiniert</div>
-        </a>
-        
-        <a href="/ai" class="nav-card btn-secondary">
-            <div class="nav-icon">🧠</div>
-            <div class="nav-label">KI-Erkennung</div>
-            <div class="nav-desc">Unkraut erkennen</div>
-        </a>
-        
-        <a href="/docs" class="nav-card btn-primary">
-            <div class="nav-icon">📚</div>
-            <div class="nav-label">Docs</div>
-            <div class="nav-desc">Dokumentation</div>
-        </a>
-        
-        <a href="/debug" class="nav-card btn-dark">
-            <div class="nav-icon">🔧</div>
-            <div class="nav-label">Debug</div>
-            <div class="nav-desc">Problemdiagnose</div>
-        </a>
-    </div>
+<!-- Navigation Grid -->
+<div class="nav-grid">
+    <a href="/control" class="nav-card btn-success">
+        <div class="nav-icon">🎮</div>
+        <div class="nav-label">Fahrzeug</div>
+        <div class="nav-desc">Roboter steuern</div>
+    </a>
+    
+    <a href="/arm" class="nav-card btn-warning">
+        <div class="nav-icon">🦾</div>
+        <div class="nav-label">Roboterarm</div>
+        <div class="nav-desc">Servo-Steuerung</div>
+    </a>
+    
+    <a href="/camera" class="nav-card btn-info">
+        <div class="nav-icon">📷</div>
+        <div class="nav-label">Kamera</div>
+        <div class="nav-desc">Live-Stream</div>
+    </a>
+    
+    <a href="/combined" class="nav-card btn-danger">
+        <div class="nav-icon">🎯</div>
+        <div class="nav-label">Kamera+Arm</div>
+        <div class="nav-desc">Kombiniert</div>
+    </a>
+    
+    <a href="/ai" class="nav-card btn-secondary">
+        <div class="nav-icon">🧠</div>
+        <div class="nav-label">KI-Erkennung</div>
+        <div class="nav-desc">Unkraut erkennen</div>
+    </a>
+    
+    <a href="/docs" class="nav-card btn-primary">
+        <div class="nav-icon">📚</div>
+        <div class="nav-label">Docs</div>
+        <div class="nav-desc">Dokumentation</div>
+    </a>
+    
+    <a href="/debug" class="nav-card btn-dark">
+        <div class="nav-icon">🔧</div>
+        <div class="nav-label">Debug</div>
+        <div class="nav-desc">Problemdiagnose</div>
+    </a>
 </div>
 
 <!-- System Status -->
@@ -85,87 +82,99 @@
     </div>
 </div>
 
-<!-- Letzte Ereignisse -->
+<!-- System-Steuerung -->
+<div class="card">
+    <div class="section-title">🔧 System-Steuerung</div>
+    <div class="system-controls">
+        <button class="btn btn-warning" onclick="parkAndShutdown()" id="shutdown-btn">
+            🏠 Parken & Herunterfahren
+        </button>
+        <button class="btn btn-info" onclick="systemReboot()" id="reboot-btn">
+            🔄 Neu starten
+        </button>
+        <button class="btn btn-danger" onclick="emergencyShutdown()" id="emergency-shutdown-btn">
+            🚨 NOT-SHUTDOWN
+        </button>
+    </div>
+    <div class="system-controls-info">
+        <small>
+            <strong>Parken & Herunterfahren:</strong> Arm in sichere Position, dann System ausschalten<br>
+            <strong>Neu starten:</strong> System sauber neu starten<br>
+            <strong>NOT-SHUTDOWN:</strong> Sofort alles stoppen und ausschalten
+        </small>
+    </div>
+</div>
+
+<!-- Status Updates -->
 <div class="card">
     <div class="section-title">📋 Status Updates</div>
     <div id="live-status">Keine Ereignisse...</div>
 </div>
+
+<!-- Shutdown-Bestätigung Modal -->
+<div id="shutdown-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔴 System herunterfahren?</h3>
+        </div>
+        <div class="modal-body">
+            <p>Das System wird sicher heruntergefahren:</p>
+            <ul>
+                <li>✅ Alle Motoren werden gestoppt</li>
+                <li>✅ Roboterarm wird geparkt</li>
+                <li>✅ Kamera-Stream wird beendet</li>
+                <li>✅ Sensoren werden deaktiviert</li>
+                <li>✅ System wird ausgeschaltet</li>
+            </ul>
+            <p><strong>Möchten Sie fortfahren?</strong></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeShutdownModal()">Abbrechen</button>
+            <button class="btn btn-danger" onclick="confirmShutdown()">Herunterfahren</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reboot-Bestätigung Modal -->
+<div id="reboot-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔄 System neu starten?</h3>
+        </div>
+        <div class="modal-body">
+            <p>Das System wird sauber neu gestartet. Alle Prozesse werden beendet und das System startet automatisch neu.</p>
+            <p><strong>Möchten Sie fortfahren?</strong></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeRebootModal()">Abbrechen</button>
+            <button class="btn btn-warning" onclick="confirmReboot()">Neu starten</button>
+        </div>
+    </div>
+</div>
+
+<!-- Emergency-Shutdown-Bestätigung Modal -->
+<div id="emergency-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🚨 NOT-SHUTDOWN!</h3>
+        </div>
+        <div class="modal-body">
+            <p><strong>⚠️ WARNUNG:</strong> Sofortiges Herunterfahren ohne Wartezeit!</p>
+            <p>Das System wird SOFORT gestoppt und ausgeschaltet.</p>
+            <p><strong>Nur in Notfällen verwenden!</strong></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEmergencyModal()">Abbrechen</button>
+            <button class="btn btn-danger" onclick="confirmEmergencyShutdown()">NOT-SHUTDOWN</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Dashboard-spezifische JavaScript-Funktionen
-function updateStatus() {
-    fetch('/api/system/status')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('system-status').innerHTML = 
-                `CPU: ${data.cpu}%<br>RAM: ${data.memory}%<br>Temp: ${data.temperature}°C`;
-        })
-        .catch(error => {
-            document.getElementById('system-status').innerHTML = 'Status nicht verfügbar';
-        });
-}
-
-function captureImage() {
-    fetch('/api/camera/capture', {method: 'POST'})
-        .then(response => response.json())
-        .then(data => {
-            addStatusMessage('📸 Foto aufgenommen: ' + data.filename);
-        });
-}
-
-function detectWeeds() {
-    fetch('/api/ai/detect-weeds', {method: 'POST'})
-        .then(response => response.json())
-        .then(data => {
-            addStatusMessage('🔍 Unkraut-Erkennung: ' + data.detections.length + ' Objekte gefunden');
-        });
-}
-
-function moveRobot(direction) {
-    fetch('/api/motors/move', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({direction: direction, duration: 1})
-    })
-    .then(response => response.json())
-    .then(data => {
-        addStatusMessage('🚗 Roboter bewegt: ' + direction);
-    });
-}
-
-function stopAll() {
-    fetch('/api/motors/stop', {method: 'POST'})
-        .then(() => addStatusMessage('⏹️ Alle Motoren gestoppt'));
-}
-
-function armHome() {
-    fetch('/api/arm/home', {method: 'POST'})
-        .then(() => addStatusMessage('🏠 Roboterarm in Home-Position'));
-}
-
-function armWeedRemove() {
-    fetch('/api/arm/weed-remove', {method: 'POST'})
-        .then(() => addStatusMessage('🌿 Unkraut-Entfernung gestartet'));
-}
-
-function addStatusMessage(message) {
-    const statusDiv = document.getElementById('live-status');
-    const time = new Date().toLocaleTimeString();
-    statusDiv.innerHTML = `<div>[${time}] ${message}</div>` + statusDiv.innerHTML;
-    
-    // Nur die letzten 10 Nachrichten behalten
-    const lines = statusDiv.querySelectorAll('div');
-    if (lines.length > 10) {
-        lines[lines.length - 1].remove();
-    }
-}
-
-// Status automatisch alle 5 Sekunden aktualisieren
-setInterval(updateStatus, 5000);
-
-// Beim Laden der Seite Status einmal abrufen
-document.addEventListener('DOMContentLoaded', updateStatus);
-</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

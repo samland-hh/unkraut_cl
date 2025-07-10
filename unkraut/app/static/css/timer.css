@@ -1,0 +1,187 @@
+/* unkraut/app/static/css/timer.css */
+/* Shutdown-Timer Styling */
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.header-left {
+    flex: 1;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-right: 1rem;
+}
+
+.shutdown-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    z-index: 100;
+    position: relative;
+    min-width: 80px;
+    white-space: nowrap;
+}
+
+.shutdown-timer:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.timer-icon {
+    font-size: 1.2rem;
+    animation: pulse 2s infinite;
+}
+
+.timer-text {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Farb-Warnungen basierend auf verbleibender Zeit */
+.shutdown-timer.warning {
+    background: rgba(255, 165, 0, 0.3);
+    border-color: rgba(255, 165, 0, 0.5);
+}
+
+.shutdown-timer.warning .timer-text {
+    color: #ffb347;
+}
+
+.shutdown-timer.critical {
+    background: rgba(255, 0, 0, 0.3);
+    border-color: rgba(255, 0, 0, 0.5);
+    animation: shake 0.5s infinite;
+}
+
+.shutdown-timer.critical .timer-text {
+    color: #ff6b6b;
+}
+
+/* Animationen */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+/* Mobile Optimierung */
+@media (max-width: 768px) {
+    .header-right {
+        gap: 1rem;
+        margin-right: 0.5rem;
+    }
+    
+    .shutdown-timer {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.9rem;
+        min-width: 70px;
+    }
+    
+    .timer-icon {
+        font-size: 1rem;
+    }
+    
+    .timer-text {
+        font-size: 0.9rem;
+    }
+}
+
+.dashboard-link {
+    display: inline-block;
+    padding: 0.5rem 0.8rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    text-align: center;
+    min-width: 40px;
+}
+
+.dashboard-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    color: white;
+}
+
+/* Mobile Optimierung */
+@media (max-width: 768px) {
+    .header-right {
+        gap: 1rem;
+        margin-right: 0.5rem;
+    }
+    
+    .shutdown-timer {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.9rem;
+        min-width: 70px;
+    }
+    
+    .timer-icon {
+        font-size: 1rem;
+    }
+    
+    .timer-text {
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-link {
+        padding: 0.4rem 0.6rem;
+        font-size: 1.1rem;
+        min-width: 35px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-content {
+        padding: 0.5rem;
+    }
+    
+    .header-right {
+        gap: 0.8rem;
+        margin-right: 0.3rem;
+    }
+    
+    .shutdown-timer {
+        padding: 0.2rem 0.6rem;
+        min-width: 60px;
+    }
+    
+    .timer-icon {
+        font-size: 0.9rem;
+    }
+    
+    .timer-text {
+        font-size: 0.8rem;
+    }
+    
+    .dashboard-link {
+        padding: 0.3rem 0.5rem;
+        font-size: 1rem;
+        min-width: 30px;
+    }
+}

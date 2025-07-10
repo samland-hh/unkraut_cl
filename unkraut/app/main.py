@@ -1,7 +1,7 @@
-# app/main.py
+# unkraut/app/main.py
 """
 Unkraut-2025 Flask Hauptanwendung
-Bereinigte modulare Architektur ohne HTML-Code in Python-Dateien
+Bereinigte modulare Architektur mit System-Shutdown-Funktionalität
 """
 from flask import Flask
 import os
@@ -50,14 +50,23 @@ def create_app():
         app.register_blueprint(api_routes.bp)        # Bereinigte API-Routes  
         app.register_blueprint(combined_routes.bp)
         app.register_blueprint(debug_routes.bp)
-        app.register_blueprint(docs_routes.bp)  # Neue Docs-Route
+        app.register_blueprint(docs_routes.bp)       # Docs-Route
         
-        print("✅ Alle Route-Module erfolgreich geladen")
+        print("✅ Standard Route-Module erfolgreich geladen")
         
     except ImportError as e:
         print(f"❌ Route-Import-Fehler: {e}")
         print("💡 Prüfe ob alle Route-Dateien existieren")
-        raise
+        # Nicht abbrechen - System-Routes können trotzdem funktionieren
+    
+    # System-Routes separat laden (für Shutdown-Funktionalität)
+    try:
+        from .routes import system_routes
+        app.register_blueprint(system_routes.bp)
+        print("✅ System-Routes (Shutdown) erfolgreich geladen")
+    except ImportError as e:
+        print(f"⚠️  System-Routes nicht gefunden: {e}")
+        print("💡 Erstelle app/routes/system_routes.py für Shutdown-Funktionalität")
     
     # Error Handler
     @app.errorhandler(404)
@@ -68,12 +77,12 @@ def create_app():
     def internal_error(error):
         return {'error': 'Interner Server-Fehler'}, 500
     
-    print("✅ Unkraut-2025 Flask App initialisiert (bereinigte Architektur)")
+    print("✅ Unkraut-2025 Flask App initialisiert")
     print(f"📁 Datenverzeichnisse erstellt: {len(directories)} Ordner")
     
     return app
 
-# App-Instanz für Import
+# App-Instanz für Import (wird von run.py verwendet)
 app = create_app()
 
 if __name__ == '__main__':
